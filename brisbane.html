@@ -2,92 +2,135 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Brisbane Travel Dashboard</title>
+    <title>Brisbane Travel Dashboard - Updated</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        .dashboard-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; padding: 20px; font-family: 'Pretendard', sans-serif; }
-        .card { border: 1px solid #ddd; border-radius: 12px; padding: 15px; background: #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .card-title { font-weight: bold; margin-bottom: 10px; font-size: 1.1rem; border-bottom: 2px solid #f0f0f0; padding-bottom: 5px; }
-        #map { height: 300px; border-radius: 8px; }
-        .weather-info, .exchange-info { font-size: 1.2rem; text-align: center; margin: 10px 0; }
-        .schedule-list { list-style: none; padding: 0; }
-        .schedule-item { margin-bottom: 8px; font-size: 0.9rem; }
-        .d-day { color: #e74c3c; font-weight: bold; }
-        @media (max-width: 768px) { .dashboard-container { grid-template-columns: 1fr; } }
+        :root { --ferry-free: #e74c3c; --ferry-paid: #3498db; }
+        .dashboard-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; padding: 20px; font-family: 'Pretendard', -apple-system, sans-serif; background: #f8f9fa; }
+        .card { border-radius: 15px; padding: 20px; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: none; }
+        .card-title { font-weight: 800; margin-bottom: 15px; font-size: 1.2rem; display: flex; justify-content: space-between; align-items: center; color: #2c3e50; }
+        #map { height: 350px; border-radius: 12px; }
+        .schedule-container { height: 600px; overflow-y: auto; padding-right: 10px; }
+        .day-section { margin-bottom: 25px; border-left: 4px solid #eee; padding-left: 15px; }
+        .day-title { font-weight: bold; color: #333; margin-bottom: 8px; display: block; font-size: 1.05rem; }
+        .schedule-item { margin-bottom: 6px; font-size: 0.9rem; line-height: 1.5; color: #555; }
+        .ferry-legend { font-size: 0.8rem; margin-bottom: 10px; padding: 8px; background: #fff; border-radius: 8px; display: inline-block; }
+        .highlight { color: #e67e22; font-weight: 600; }
+        .d-day { background: #ff7675; color: #fff; padding: 2px 8px; border-radius: 20px; font-size: 0.8rem; }
+        @media (max-width: 900px) { .dashboard-container { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 
 <div class="dashboard-container">
-    <div class="card">
-        <div class="card-title">🌦️ 브리즈번 현재 날씨</div>
-        <div id="weather-display" class="weather-info">데이터 로딩 중...</div>
-        <p style="font-size: 0.8rem; color: #666; text-align: center;">(2월은 덥고 습하니 통기성 좋은 옷을 챙기세요)</p>
-    </div>
-
-    <div class="card">
-        <div class="card-title">💵 실시간 환율 (AUD/KRW)</div>
-        <div id="exchange-rate" class="exchange-info">1 AUD = 로딩 중...</div>
-        <div style="text-align: center;">
-            <input type="number" id="aud-input" placeholder="AUD 입력" style="width: 80px;"> AUD = 
-            <span id="krw-output">0</span> 원
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div class="card">
+            <div class="card-title">🌦️ Brisbane Weather</div>
+            <div id="weather" style="text-align: center; font-size: 1.5rem; font-weight: bold;">26°C / Partly Cloudy</div>
+        </div>
+        <div class="card">
+            <div class="card-title">💵 Exchange Rate</div>
+            <div id="rate" style="text-align: center; font-size: 1.5rem; font-weight: bold; color: #27ae60;">1 AUD = Loading...</div>
+        </div>
+        <div class="card">
+            <div class="card-title">📍 Key Spots</div>
+            <div id="map"></div>
         </div>
     </div>
 
-    <div class="card" style="grid-column: span 2;">
-        <div class="card-title">📍 브리즈번 주요 스팟 및 러닝 코스</div>
-        <div id="map"></div>
-    </div>
+    <div class="card">
+        <div class="card-title">
+            📅 상세 일정 <span id="d-day" class="d-day"></span>
+        </div>
+        <div class="ferry-legend">
+            ❤️ 시티호퍼 (무료) | 💙 시티캣 (유료)
+        </div>
+        <div class="schedule-container">
+            <div class="day-section">
+                <span class="day-title">15일 (일) - 시티 입성</span>
+                <div class="schedule-item">🛬 08:05 브리즈번 도착 / 입국 및 숙소 이동</div>
+                <div class="schedule-item">🍔 12:10 <span class="highlight">Betti's Burger</span> 점심</div>
+                <div class="schedule-item">⛴️ 13:30 Holman St → Riverside (❤️페리)</div>
+                <div class="schedule-item">🛍️ 14:30 퀸 스트리트 몰 & Genki Market</div>
+                <div class="schedule-item">🌳 16:30 <span class="highlight">보타닉 가든</span> 피크닉 & 일몰</div>
+            </div>
 
-    <div class="card" style="grid-column: span 2;">
-        <div class="card-title">📅 여행 일정 (2/15 - 2/21) <span id="d-day-timer" class="d-day"></span></div>
-        <ul class="schedule-list">
-            <li class="schedule-item">✅ <strong>2/15 (일):</strong> 브리즈번 도착 및 에어비앤비 체크인, 사우스뱅크 산책</li>
-            <li class="schedule-item">✅ <strong>2/16 (월) - 2/19 (목):</strong> 매일 아침 조깅 (보타닉 가든 코스), 도심 휴식</li>
-            <li class="schedule-item">✅ <strong>2/20 (금):</strong> 기념품 쇼핑 및 마지막 만찬</li>
-            <li class="schedule-item">✅ <strong>2/21 (토):</strong> 체크아웃 후 시내 관광, 23:00 브리즈번 출국</li>
-        </ul>
+            <div class="day-section">
+                <span class="day-title">16일 (월) - 문화 Day</span>
+                <div class="schedule-item">🏃 06:30 아침 러닝</div>
+                <div class="schedule-item">🎨 10:00 GOMA 미술관 & 주립 도서관</div>
+                <div class="schedule-item">🍕 12:35 Julius Pizzerai 점심</div>
+                <div class="schedule-item">🏖️ 15:15 사우스뱅크 인공해변 & 피크닉 (Lune 크로와상)</div>
+                <div class="schedule-item">🛒 18:30 💙페리로 이동 후 Woolworths 장보기</div>
+            </div>
+
+            <div class="day-section">
+                <span class="day-title">17일 (화) - 패딩턴 & 수영</span>
+                <div class="schedule-item">🏃 06:30 아침 러닝</div>
+                <div class="schedule-item">🏘️ 10:00 패딩턴 길거리 구경 & 커피</div>
+                <div class="schedule-item">🍝 12:40 Marinara Trattoria 점심</div>
+                <div class="schedule-item">🏊 14:00 사우스뱅크 Street Beach 수영</div>
+                <div class="schedule-item">🌅 17:30 <span class="highlight">캥거루 포인트</span> 노을 & 야경 산책</div>
+            </div>
+
+            <div class="day-section">
+                <span class="day-title">18일 (수) - 섬 여행</span>
+                <div class="schedule-item">🏝️ 근교 <span class="highlight">노스 스트래드브록 섬</span> 전일 일정</div>
+            </div>
+
+            <div class="day-section">
+                <span class="day-title">19일 (목) - 오빠 합류!</span>
+                <div class="schedule-item">👨‍👩‍👧‍👦 09:30 가족 합류 및 휴식</div>
+                <div class="schedule-item">☕ 11:40 제임스 스트리트 <span class="highlight">The Green</span> 브런치</div>
+                <div class="schedule-item">🌉 14:20 스토리 브릿지 도보 횡단</div>
+                <div class="schedule-item">⛴️ 14:40 ❤️페리 투어 (Riverside → South Bank)</div>
+                <div class="schedule-item">🌃 18:00 네빌 보너 브릿지 건너 저녁 식사</div>
+            </div>
+
+            <div class="day-section">
+                <span class="day-title">20일 (금) - 골드코스트</span>
+                <div class="schedule-item">🏄 골드코스트 당일치기</div>
+                <div class="schedule-item">🥩 저녁: 홈메이드 스테이크 파티</div>
+            </div>
+
+            <div class="day-section">
+                <span class="day-title">21일 (토) - 마지막 마켓</span>
+                <div class="schedule-item">🧺 07:00 <span class="highlight">웨스트엔드 마켓</span> (토요일 한정)</div>
+                <div class="schedule-item">🚕 09:00 우버로 공항 이동</div>
+                <div class="schedule-item">🛫 11:20 브리즈번 출발</div>
+            </div>
+        </div>
     </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // 1. D-Day 계산
-    const tripStart = new Date('2026-02-15T00:00:00');
-    const now = new Date();
-    const diff = tripStart - now;
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    document.getElementById('d-day-timer').innerText = diff > 0 ? `(D-${days})` : "(여행 중!)";
+    // D-Day 계산
+    const start = new Date('2026-02-15');
+    const today = new Date();
+    const diff = Math.ceil((start - today) / (1000 * 60 * 60 * 24));
+    document.getElementById('d-day').innerText = diff > 0 ? `D-${diff}` : (diff === 0 ? "Day-1!" : "여행 중");
 
-    // 2. 날씨 정보 (OpenWeatherMap API 예시 - 실제 사용시 API Key 필요)
-    // 간단한 구현을 위해 날씨 위젯 호출 방식으로 대체 가능
-    document.getElementById('weather-display').innerHTML = `26°C / 흐림 ☁️<br><small>습도 75% | 강수확률 20%</small>`;
-
-    // 3. 환율 정보 (무료 API 사용)
+    // 환율 (실제 데이터)
     fetch('https://open.er-api.com/v6/latest/AUD')
         .then(res => res.json())
         .then(data => {
-            const rate = data.rates.KRW.toFixed(2);
-            document.getElementById('exchange-rate').innerText = `1 AUD = ${rate} 원`;
-            document.getElementById('aud-input').addEventListener('input', (e) => {
-                document.getElementById('krw-output').innerText = (e.target.value * rate).toLocaleString();
-            });
+            document.getElementById('rate').innerText = `1 AUD = ${data.rates.KRW.toFixed(2)} 원`;
         });
 
-    // 4. 지도 설정 (브리즈번 중심)
-    const map = L.map('map').setView([-27.4709, 153.0235], 13);
+    // 지도 설정
+    const map = L.map('map').setView([-27.4705, 153.0260], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    // 주요 스팟 마커
     const spots = [
-        { name: "브리즈번 보타닉 가든 (추천 조깅 코스)", lat: -27.4744, lng: 153.0294 },
-        { name: "사우스뱅크 파크랜드", lat: -27.4772, lng: 153.0213 },
-        { name: "퀸 스트리트 몰 (쇼핑)", lat: -27.4694, lng: 153.0251 }
+        {n: "Betti's Burger", l: [-27.4685, 153.0245]},
+        {n: "보타닉 가든 (러닝)", l: [-27.4744, 153.0294]},
+        {n: "GOMA 미술관", l: [-27.4713, 153.0175]},
+        {n: "사우스뱅크 인공해변", l: [-27.4775, 153.0210]},
+        {n: "캥거루 포인트", l: [-27.4818, 153.0332]},
+        {n: "웨스트엔드 마켓", l: [-27.4842, 153.0055]}
     ];
-
-    spots.forEach(spot => {
-        L.marker([spot.lat, spot.lng]).addTo(map).bindPopup(spot.name);
-    });
+    spots.forEach(s => L.marker(s.l).addTo(map).bindPopup(s.n));
 </script>
 
 </body>
