@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Brisbane Travel Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        .dashboard-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; padding: 20px; font-family: 'Pretendard', sans-serif; }
+        .card { border: 1px solid #ddd; border-radius: 12px; padding: 15px; background: #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .card-title { font-weight: bold; margin-bottom: 10px; font-size: 1.1rem; border-bottom: 2px solid #f0f0f0; padding-bottom: 5px; }
+        #map { height: 300px; border-radius: 8px; }
+        .weather-info, .exchange-info { font-size: 1.2rem; text-align: center; margin: 10px 0; }
+        .schedule-list { list-style: none; padding: 0; }
+        .schedule-item { margin-bottom: 8px; font-size: 0.9rem; }
+        .d-day { color: #e74c3c; font-weight: bold; }
+        @media (max-width: 768px) { .dashboard-container { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-container">
+    <div class="card">
+        <div class="card-title">🌦️ 브리즈번 현재 날씨</div>
+        <div id="weather-display" class="weather-info">데이터 로딩 중...</div>
+        <p style="font-size: 0.8rem; color: #666; text-align: center;">(2월은 덥고 습하니 통기성 좋은 옷을 챙기세요)</p>
+    </div>
+
+    <div class="card">
+        <div class="card-title">💵 실시간 환율 (AUD/KRW)</div>
+        <div id="exchange-rate" class="exchange-info">1 AUD = 로딩 중...</div>
+        <div style="text-align: center;">
+            <input type="number" id="aud-input" placeholder="AUD 입력" style="width: 80px;"> AUD = 
+            <span id="krw-output">0</span> 원
+        </div>
+    </div>
+
+    <div class="card" style="grid-column: span 2;">
+        <div class="card-title">📍 브리즈번 주요 스팟 및 러닝 코스</div>
+        <div id="map"></div>
+    </div>
+
+    <div class="card" style="grid-column: span 2;">
+        <div class="card-title">📅 여행 일정 (2/15 - 2/21) <span id="d-day-timer" class="d-day"></span></div>
+        <ul class="schedule-list">
+            <li class="schedule-item">✅ <strong>2/15 (일):</strong> 브리즈번 도착 및 에어비앤비 체크인, 사우스뱅크 산책</li>
+            <li class="schedule-item">✅ <strong>2/16 (월) - 2/19 (목):</strong> 매일 아침 조깅 (보타닉 가든 코스), 도심 휴식</li>
+            <li class="schedule-item">✅ <strong>2/20 (금):</strong> 기념품 쇼핑 및 마지막 만찬</li>
+            <li class="schedule-item">✅ <strong>2/21 (토):</strong> 체크아웃 후 시내 관광, 23:00 브리즈번 출국</li>
+        </ul>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // 1. D-Day 계산
+    const tripStart = new Date('2026-02-15T00:00:00');
+    const now = new Date();
+    const diff = tripStart - now;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    document.getElementById('d-day-timer').innerText = diff > 0 ? `(D-${days})` : "(여행 중!)";
+
+    // 2. 날씨 정보 (OpenWeatherMap API 예시 - 실제 사용시 API Key 필요)
+    // 간단한 구현을 위해 날씨 위젯 호출 방식으로 대체 가능
+    document.getElementById('weather-display').innerHTML = `26°C / 흐림 ☁️<br><small>습도 75% | 강수확률 20%</small>`;
+
+    // 3. 환율 정보 (무료 API 사용)
+    fetch('https://open.er-api.com/v6/latest/AUD')
+        .then(res => res.json())
+        .then(data => {
+            const rate = data.rates.KRW.toFixed(2);
+            document.getElementById('exchange-rate').innerText = `1 AUD = ${rate} 원`;
+            document.getElementById('aud-input').addEventListener('input', (e) => {
+                document.getElementById('krw-output').innerText = (e.target.value * rate).toLocaleString();
+            });
+        });
+
+    // 4. 지도 설정 (브리즈번 중심)
+    const map = L.map('map').setView([-27.4709, 153.0235], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    // 주요 스팟 마커
+    const spots = [
+        { name: "브리즈번 보타닉 가든 (추천 조깅 코스)", lat: -27.4744, lng: 153.0294 },
+        { name: "사우스뱅크 파크랜드", lat: -27.4772, lng: 153.0213 },
+        { name: "퀸 스트리트 몰 (쇼핑)", lat: -27.4694, lng: 153.0251 }
+    ];
+
+    spots.forEach(spot => {
+        L.marker([spot.lat, spot.lng]).addTo(map).bindPopup(spot.name);
+    });
+</script>
+
+</body>
+</html>
