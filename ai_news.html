@@ -198,9 +198,12 @@
                 setBlogPost('');
 
                 const targetUrl = sources[selectedSource].getURL(topic);
+                
+                // --- 프록시 경로 리스트 확장 (안정성 강화) ---
                 const proxies = [
-                    { url: (t) => `https://api.allorigins.win/get?url=${encodeURIComponent(t)}`, isJson: true },
-                    { url: (t) => `https://corsproxy.io/?url=${encodeURIComponent(t)}`, isJson: false }
+                    { name: 'AllOrigins', url: (t) => `https://api.allorigins.win/get?url=${encodeURIComponent(t)}`, isJson: true },
+                    { name: 'CorsProxyIO', url: (t) => `https://corsproxy.io/?url=${encodeURIComponent(t)}`, isJson: false },
+                    { name: 'Codetabs', url: (t) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(t)}`, isJson: false }
                 ];
 
                 let success = false;
@@ -208,15 +211,28 @@
 
                 for (const proxy of proxies) {
                     try {
+                        console.log(`Trying proxy: ${proxy.name}`);
                         const response = await fetch(proxy.url(targetUrl));
                         if (!response.ok) continue;
-                        rawContent = proxy.isJson ? (await response.json()).contents : await response.text();
-                        if (rawContent && rawContent.includes('<item>')) { success = true; break; }
-                    } catch (e) { console.warn("Proxy failed..."); }
+                        
+                        if (proxy.isJson) {
+                            const data = await response.json();
+                            rawContent = data.contents;
+                        } else {
+                            rawContent = await response.text();
+                        }
+
+                        if (rawContent && rawContent.includes('<item>')) {
+                            success = true;
+                            break; 
+                        }
+                    } catch (e) {
+                        console.warn(`Proxy ${proxy.name} failed. trying next...`);
+                    }
                 }
 
                 if (!success) {
-                    setError('뉴스 데이터를 가져올 수 없습니다. 잠시 후 다시 시도해 주세요.');
+                    setError('뉴스 데이터를 가져올 수 없습니다. 프록시 서버들이 응답하지 않거나 뉴스 소스에서 차단되었습니다. 잠시 후 다시 시도해 보세요.');
                     setLoading(false);
                     return;
                 }
@@ -224,7 +240,19 @@
                 try {
                     const parser = new DOMParser();
                     const xmlDoc = parser.parseFromString(rawContent, "text/xml");
+                    
+                    // XML 파싱 에러 체크
+                    if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
+                        throw new Error("XML 파싱 오류");
+                    }
+
                     const items = Array.from(xmlDoc.querySelectorAll("item"));
+
+                    if (items.length === 0) {
+                        setError('검색 결과가 없습니다. 다른 키워드로 검색해 보세요.');
+                        setLoading(false);
+                        return;
+                    }
 
                     let newsItems = items.map(item => ({
                         title: item.querySelector("title")?.textContent.split(" - ")[0] || "",
@@ -237,12 +265,19 @@
                     }));
 
                     if (selectedSource !== 'google' && topic.trim()) {
-                        newsItems = newsItems.filter(item => item.title.toLowerCase().includes(topic.toLowerCase()));
+                        newsItems = newsItems.filter(item => 
+                            item.title.toLowerCase().includes(topic.toLowerCase()) || 
+                            item.summary.toLowerCase().includes(topic.toLowerCase())
+                        );
                     }
 
                     setResults(newsItems.slice(0, 30));
-                } catch (err) { setError('데이터 파싱 중 오류가 발생했습니다.'); }
-                finally { setLoading(false); }
+                } catch (err) { 
+                    console.error(err);
+                    setError('데이터를 처리하는 중 오류가 발생했습니다.'); 
+                } finally { 
+                    setLoading(false); 
+                }
             };
 
             return (
@@ -317,7 +352,7 @@
                             {Object.entries(sources).map(([key, info]) => (
                                 <button
                                     key={key}
-                                    onClick={() => { setSelectedSource(key); setResults([]); }}
+                                    onClick={() => { setSelectedSource(key); setResults([]); setError(null); }}
                                     className={`px-6 py-2.5 rounded-2xl font-bold text-sm transition-all shadow-sm ${
                                         selectedSource === key ? `${info.color} text-white shadow-md scale-105` : 'bg-white text-slate-400 border border-slate-200'
                                     }`}
@@ -441,9 +476,19 @@
                         )}
 
                         {error && (
-                            <div className="bg-red-50 p-8 rounded-[2rem] border border-red-100 text-red-700 flex items-start gap-4">
-                                <Icon name="alert-circle" className="w-6 h-6 shrink-0 mt-1" />
-                                <div><p className="font-bold text-lg mb-1">오류가 발생했습니다</p><p className="opacity-90">{error}</p></div>
+                            <div className="bg-red-50 p-8 rounded-[2rem] border border-red-100 text-red-700 flex flex-col items-center text-center gap-4 animate-in slide-in-from-top-2">
+                                <Icon name="alert-circle" className="w-12 h-12 mb-2" />
+                                <div>
+                                    <p className="font-bold text-lg mb-1">오류가 발생했습니다</p>
+                                    <p className="opacity-90 mb-6">{error}</p>
+                                    <button 
+                                        onClick={fetchNews}
+                                        className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-lg"
+                                    >
+                                        <Icon name="refresh-ccw" className="w-4 h-4" />
+                                        다시 시도하기
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
