@@ -21,6 +21,8 @@
         .prose table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
         .prose th, .prose td { border: 1px solid #e2e8f0; padding: 0.75rem; text-align: left; }
         .prose th { background-color: #f8fafc; font-weight: bold; }
+        .prose h1, .prose h2, .prose h3 { margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 800; }
+        .prose p { margin-bottom: 1rem; line-height: 1.8; }
     </style>
 </head>
 <body class="bg-slate-50">
@@ -104,8 +106,8 @@
                     const result = await response.json();
                     return result.candidates?.[0]?.content?.parts?.[0]?.text;
                 } catch (err) {
-                    if (retryCount < 3 && err.message.includes('429')) {
-                        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
+                    if (retryCount < 3 && (err.message.includes('429') || err.message.includes('500'))) {
+                        await new Promise(r => setTimeout(r, 1500 * Math.pow(2, retryCount)));
                         return callGemini(userPrompt, systemPrompt, retryCount + 1);
                     }
                     throw err;
@@ -199,11 +201,12 @@
 
                 const targetUrl = sources[selectedSource].getURL(topic);
                 
-                // --- 프록시 경로 리스트 확장 (안정성 강화) ---
+                // --- 더 많은 프록시 경로와 타임아웃 적용 (안정성 극대화) ---
                 const proxies = [
                     { name: 'AllOrigins', url: (t) => `https://api.allorigins.win/get?url=${encodeURIComponent(t)}`, isJson: true },
                     { name: 'CorsProxyIO', url: (t) => `https://corsproxy.io/?url=${encodeURIComponent(t)}`, isJson: false },
-                    { name: 'Codetabs', url: (t) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(t)}`, isJson: false }
+                    { name: 'Codetabs', url: (t) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(t)}`, isJson: false },
+                    { name: 'Bridge', url: (t) => `https://cors-anywhere.azm.workers.dev/${t}`, isJson: false }
                 ];
 
                 let success = false;
@@ -211,8 +214,12 @@
 
                 for (const proxy of proxies) {
                     try {
-                        console.log(`Trying proxy: ${proxy.name}`);
-                        const response = await fetch(proxy.url(targetUrl));
+                        const controller = new AbortController();
+                        const id = setTimeout(() => controller.abort(), 8000); // 8초 타임아웃
+
+                        const response = await fetch(proxy.url(targetUrl), { signal: controller.signal });
+                        clearTimeout(id);
+
                         if (!response.ok) continue;
                         
                         if (proxy.isJson) {
@@ -222,17 +229,17 @@
                             rawContent = await response.text();
                         }
 
-                        if (rawContent && rawContent.includes('<item>')) {
+                        if (rawContent && (rawContent.includes('<item>') || rawContent.includes('<entry>'))) {
                             success = true;
                             break; 
                         }
                     } catch (e) {
-                        console.warn(`Proxy ${proxy.name} failed. trying next...`);
+                        console.warn(`Proxy ${proxy.name} failed or timed out. trying next...`);
                     }
                 }
 
                 if (!success) {
-                    setError('뉴스 데이터를 가져올 수 없습니다. 프록시 서버들이 응답하지 않거나 뉴스 소스에서 차단되었습니다. 잠시 후 다시 시도해 보세요.');
+                    setError('뉴스 데이터를 가져올 수 없습니다. 프록시 서버들이 응답하지 않거나 뉴스 소스에서 차단되었습니다. 잠시 후 다시 시도해 주세요.');
                     setLoading(false);
                     return;
                 }
@@ -241,7 +248,6 @@
                     const parser = new DOMParser();
                     const xmlDoc = parser.parseFromString(rawContent, "text/xml");
                     
-                    // XML 파싱 에러 체크
                     if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
                         throw new Error("XML 파싱 오류");
                     }
@@ -249,7 +255,7 @@
                     const items = Array.from(xmlDoc.querySelectorAll("item"));
 
                     if (items.length === 0) {
-                        setError('검색 결과가 없습니다. 다른 키워드로 검색해 보세요.');
+                        setError('검색 결과가 없습니다. 검색어의 철자를 확인하거나 다른 키워드로 검색해 보세요.');
                         setLoading(false);
                         return;
                     }
@@ -264,17 +270,25 @@
                         summary: item.querySelector("description")?.textContent.replace(/<[^>]*>?/gm, '') || ""
                     }));
 
+                    // 로컬 필터링 (구글 뉴스가 아닐 때)
                     if (selectedSource !== 'google' && topic.trim()) {
+                        const searchLower = topic.toLowerCase();
                         newsItems = newsItems.filter(item => 
-                            item.title.toLowerCase().includes(topic.toLowerCase()) || 
-                            item.summary.toLowerCase().includes(topic.toLowerCase())
+                            item.title.toLowerCase().includes(searchLower) || 
+                            item.summary.toLowerCase().includes(searchLower)
                         );
+                        
+                        if (newsItems.length === 0) {
+                            setError(`'${topic}' 주제에 대한 기사가 현재 피드에 없습니다. 철자를 확인하거나(예: olympic) 다른 키워드를 시도해 보세요.`);
+                            setLoading(false);
+                            return;
+                        }
                     }
 
                     setResults(newsItems.slice(0, 30));
                 } catch (err) { 
                     console.error(err);
-                    setError('데이터를 처리하는 중 오류가 발생했습니다.'); 
+                    setError('데이터를 처리하는 중 오류가 발생했습니다. 잠시 후 다시 시도해 보세요.'); 
                 } finally { 
                     setLoading(false); 
                 }
@@ -314,7 +328,7 @@
                                             </button>
                                         </div>
                                         <p className="text-[11px] text-slate-400 mt-2">
-                                            키는 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">Google AI Studio</a>에서 발급받을 수 있습니다.
+                                            키는 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline font-semibold">Google AI Studio</a>에서 발급받을 수 있습니다.
                                         </p>
                                     </div>
                                     <button onClick={() => setIsModalOpen(false)} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl shadow-lg transition-all active:scale-95">
@@ -354,7 +368,7 @@
                                     key={key}
                                     onClick={() => { setSelectedSource(key); setResults([]); setError(null); }}
                                     className={`px-6 py-2.5 rounded-2xl font-bold text-sm transition-all shadow-sm ${
-                                        selectedSource === key ? `${info.color} text-white shadow-md scale-105` : 'bg-white text-slate-400 border border-slate-200'
+                                        selectedSource === key ? `${info.color} text-white shadow-md scale-105` : 'bg-white text-slate-400 border border-slate-200 hover:border-slate-300'
                                     }`}
                                 >
                                     {info.name}
@@ -369,7 +383,7 @@
                                 <input
                                     type="text"
                                     className="w-full pl-12 pr-4 py-4 border-none focus:ring-0 text-lg outline-none"
-                                    placeholder="뉴스 검색어 입력..."
+                                    placeholder="검색어 입력 (예: olympic)..."
                                     value={topic}
                                     onChange={(e) => setTopic(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && fetchNews()}
@@ -483,7 +497,7 @@
                                     <p className="opacity-90 mb-6">{error}</p>
                                     <button 
                                         onClick={fetchNews}
-                                        className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-lg"
+                                        className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-lg active:scale-95"
                                     >
                                         <Icon name="refresh-ccw" className="w-4 h-4" />
                                         다시 시도하기
