@@ -340,7 +340,10 @@
             <div id="weather-date" class="hidden"></div>
             <!-- Forecast row below the cards -->
             <div class="bg-white rounded-[2rem] p-5 shadow-sm border border-slate-100 mt-4">
-                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 px-2">7일간의 기상 예보 흐름</h4>
+                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 px-2 flex items-center justify-between">
+                    <span>7일간의 기상 예보 흐름</span>
+                    <span id="forecast-city-label" class="text-nomad-teal font-extrabold normal-case bg-nomad-teal/5 px-2 py-0.5 rounded-lg text-[9px]"></span>
+                </h4>
                 <div id="forecast-container" class="flex space-x-4 overflow-x-auto no-scrollbar pb-2 px-1 text-center"></div>
             </div>
 
@@ -487,12 +490,18 @@
                     <h2 class="text-xl font-extrabold text-nomad-dark flex items-center">
                         <span class="w-1.5 h-6 bg-nomad-teal mr-2.5 rounded-full"></span> 상세 일정 및 일일 체크리스트
                     </h2>
-                    <p class="text-xs text-nomad-muted mt-1">원하시는 방문 국가를 선택하면 해당하는 세부 일정이 나타납니다.</p>
+                    <p class="text-xs text-nomad-muted mt-1">원하시는 방문 도시나 지역을 선택하면 해당하는 세부 일정이 나타납니다.</p>
                 </div>
-                <!-- Country Filter for Itinerary -->
-                <div class="flex bg-white border border-slate-200 p-1 rounded-2xl mt-4 md:mt-0 shadow-sm max-w-xs">
-                    <button onclick="filterItinerary('kazakh')" id="btn-itinerary-kazakh" class="px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all bg-nomad-terracotta text-white shadow-sm">카자흐스탄 여정</button>
-                    <button onclick="filterItinerary('kyrgyz')" id="btn-itinerary-kyrgyz" class="px-4 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted">키르기스스탄 여정</button>
+                <!-- City Filter for Itinerary -->
+                <div class="flex overflow-x-auto space-x-1.5 p-1 bg-white border border-slate-200 rounded-2xl shadow-sm mt-4 md:mt-0 no-scrollbar max-w-full md:max-w-xl">
+                    <button onclick="filterItinerary('all')" id="btn-itinerary-all" class="px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all bg-nomad-terracotta text-white shadow-sm whitespace-nowrap">전체</button>
+                    <button onclick="filterItinerary('almaty')" id="btn-itinerary-almaty" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted whitespace-nowrap">알마티</button>
+                    <button onclick="filterItinerary('charyn_kolsai')" id="btn-itinerary-charyn_kolsai" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted whitespace-nowrap">차른/콜사이</button>
+                    <button onclick="filterItinerary('jyrgalan')" id="btn-itinerary-jyrgalan" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted whitespace-nowrap">지르갈란</button>
+                    <button onclick="filterItinerary('karakol')" id="btn-itinerary-karakol" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted whitespace-nowrap">카라콜/알틴아라산</button>
+                    <button onclick="filterItinerary('issyk_kochkor')" id="btn-itinerary-issyk_kochkor" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted whitespace-nowrap">이식쿨/코치코르</button>
+                    <button onclick="filterItinerary('songkul')" id="btn-itinerary-songkul" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted whitespace-nowrap">송쿨</button>
+                    <button onclick="filterItinerary('bishkek')" id="btn-itinerary-bishkek" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted whitespace-nowrap">비슈케크</button>
                 </div>
             </div>
             
@@ -675,10 +684,9 @@
             `).join('');
         }
 
-        // 100% Identical Schedule & Travel Duration synced with the user's sketch image (여행일정.jpg)
         const itineraryData = [
             {
-                day: 1, date: "7/17 (금)", country: "kazakh", title: "알마티 입성 및 휴식", icon: "fa-plane-arrival", color: "text-blue-500",
+                day: 1, date: "7/17 (금)", country: "kazakh", city: "almaty", title: "알마티 입성 및 휴식", icon: "fa-plane-arrival", color: "text-blue-500",
                 route: "ALA 공항 ➔ 알마티 시내 (Abay Avenue 77)", travelTime: "차량 약 30분",
                 accommodation: "Abay Avenue 77 (Almaty)", expense: "83,220원 (호텔)",
                 schedule: [
@@ -686,10 +694,11 @@
                     { time: "이동", activity: "ALA 공항에서 전용 차량 탑승하여 알마티 시내 숙소로 이동", icon: "fa-car" },
                     { time: "체크인", activity: "숙소(Abay Avenue 77) 체크인 및 휴식", icon: "fa-hotel", highlight: true }
                 ],
-                tasks: ["공항 내 현지 유심 구매 및 정상 작동 확인", "기본 텐게(KZT) 현금 일부 현금인출기(ATM) 인출", "Yandex Go 모바일 호출 앱 정상 작동 테스팅"]
+                tasks: ["공항 내 현지 유심 구매 및 정상 작동 확인", "기본 텐게(KZT) 현금 일부 현금인출기(ATM) 인출", "Yandex Go 모바일 호출 앱 정상 작동 테스팅"],
+                essentialGear: ["여권 원본", "현지 유심", "Yandex Go 앱"]
             },
             {
-                day: 2, date: "7/18 (토)", country: "kazakh", title: "메데우 & 침불락 트레킹", icon: "fa-snowflake", color: "text-sky-500",
+                day: 2, date: "7/18 (토)", country: "kazakh", city: "almaty", title: "메데우 & 침불락 트레킹", icon: "fa-snowflake", color: "text-sky-500",
                 route: "알마티 (Abay Avenue 77) ➔ Medeu ➔ Shymbulak ➔ 알마티", travelTime: "곤돌라 왕복 약 30~40분",
                 accommodation: "Abay Avenue 77 (Almaty)", expense: "경비 약 1만원 (티켓 관련 등), 숙소비 83,220원",
                 schedule: [
@@ -698,10 +707,11 @@
                     { time: "트레킹", activity: "해발 3,200m 침불락(Shymbulak) 정상 전망대 및 설산 트레킹 진행", icon: "fa-mountain-sun", highlight: true },
                     { time: "복귀", activity: "알마티 도심 복귀 및 휴식", icon: "fa-hotel" }
                 ],
-                tasks: ["★침불락 최상단 왕복 티켓 구입하기", "침불락 정상은 기온이 매우 낮으므로 보온용 바람막이/경량패딩 지참", "오후 개인 시간 활용 알마티 시내 탐색"]
+                tasks: ["★침불락 최상단 왕복 티켓 구입하기", "침불락 정상은 기온이 매우 낮으므로 보온용 바람막이/경량패딩 지참", "오후 개인 시간 활용 알마티 시내 탐색"],
+                essentialGear: ["침불락 티켓", "바람막이/경량패딩", "등산화"]
             },
             {
-                day: 3, date: "7/19 (일)", country: "kazakh", title: "웅장한 차른 협곡과 옐로우캐년 트레킹", icon: "fa-mountain", color: "text-orange-500",
+                day: 3, date: "7/19 (일)", country: "kazakh", city: "charyn_kolsai", title: "웅장한 차른 협곡과 옐로우캐년 트레킹", icon: "fa-mountain", color: "text-orange-500",
                 route: "알마티 ➔ 차른캐년 ➔ 림트레킹 ➔ 옐로우캐년", travelTime: "차량 약 3시간",
                 accommodation: "차른캐년 (Charyn Canyon Yurt/Lodge)",
                 schedule: [
@@ -710,10 +720,11 @@
                     { time: "옐로우캐년", activity: "이색적인 노란 사암의 옐로우 캐년 탐방", icon: "fa-compass" },
                     { time: "저녁", activity: "차른캐년 숙소 체크인 및 별빛 밤 감상", icon: "fa-campground" }
                 ],
-                tasks: ["사막 기후와 흙먼지 차단용 버프/손수건 구비", "림 트레킹 진행 시 미끄러짐 방지를 위해 아웃도어용 트레킹화 착용", "차른캐년 숙소 대비 개인 세면 타월 및 위생용품 지참"]
+                tasks: ["사막 기후와 흙먼지 차단용 버프/손수건 구비", "림 트레킹 진행 시 미끄러짐 방지를 위해 아웃도어용 트레킹화 착용", "차른캐년 숙소 대비 개인 세면 타월 및 위생용품 지참"],
+                essentialGear: ["버프/손수건", "등산화", "개인 세면 타월"]
             },
             {
-                day: 4, date: "7/20 (월)", country: "kazakh", title: "블랙캐년과 에메랄드 호수 탐방", icon: "fa-water", color: "text-nomad-teal",
+                day: 4, date: "7/20 (월)", country: "kazakh", city: "charyn_kolsai", title: "블랙캐년과 에메랄드 호수 탐방", icon: "fa-water", color: "text-nomad-teal",
                 route: "차른캐년 ➔ 블랙캐년 ➔ 카인디 호수 ➔ 콜사이 호수", travelTime: "차량 및 4WD 이동",
                 accommodation: "콜사이 (Kolsai Lake Yurt/Lodge)",
                 schedule: [
@@ -722,10 +733,11 @@
                     { time: "카인디", activity: "침엽수들이 수면 위로 솟아 있는 신비로운 카인디 호수 투어 및 승마/산책", icon: "fa-water", highlight: true },
                     { time: "콜사이", activity: "에메랄드빛 콜사이(Kolsai) 호수로 이동하여 체크인 및 호숫가 휴식", icon: "fa-hotel" }
                 ],
-                tasks: ["오프로드 주행 구간이 길어 멀미가 심한 경우 멀미약 복용", "카인디 호수 산책/승마 시 긴바요 착용 권장", "콜사이 숙소 투숙 시 수변의 차가운 저녁 바람 대비"]
+                tasks: ["오프로드 주행 구간이 길어 멀미가 심한 경우 멀미약 복용", "카인디 호수 산책/승마 시 긴바지 착용 권장", "콜사이 숙소 투숙 시 수변의 차가운 저녁 바람 대비"],
+                essentialGear: ["멀미약", "등산화", "방한 의류"]
             },
             {
-                day: 5, date: "7/21 (화)", country: "kyrgyz", title: "키르기스 국경 통과 및 야생화 평원 지르갈란", icon: "fa-passport", color: "text-indigo-500",
+                day: 5, date: "7/21 (화)", country: "kyrgyz", city: "jyrgalan", title: "키르기스 국경 통과 및 야생화 평원 지르갈란", icon: "fa-passport", color: "text-indigo-500",
                 route: "콜사이 ➔ 카르카라 국경 ➔ 지르갈란", travelTime: "국경 대기 포함 차량 약 4~5시간",
                 accommodation: "지르갈란 (Jyrgalan Guesthouse)",
                 schedule: [
@@ -733,10 +745,11 @@
                     { time: "국경통과", activity: "Karkara 국경 검문소 도착하여 출입국 심사 및 세관 통과", icon: "fa-shield-halved", highlight: true },
                     { time: "지르갈란", activity: "국경 통과 후 야생화와 광활한 초원의 지르갈란(Jyrgalan) 이동 및 숙소 체크인", icon: "fa-campground" }
                 ],
-                tasks: ["★여권 원본 분실 주의! 수시로 소지 상태 재확인", "키르기스스탄 솜(KGS) 환전 준비", "지르갈란 도착 후 따뜻한 아웃도어 의류 준비"]
+                tasks: ["★여권 원본 분실 주의! 수시로 소지 상태 재확인", "키르기스스탄 솜(KGS) 환전 준비", "지르갈란 도착 후 따뜻한 아웃도어 의류 준비"],
+                essentialGear: ["여권 원본", "키르기스 솜(KGS)", "방한 의류"]
             },
             {
-                day: 6, date: "7/22 (수)", country: "kyrgyz", title: "지르갈란 다리 트레킹 및 카라콜 이동", icon: "fa-person-hiking", color: "text-emerald-500",
+                day: 6, date: "7/22 (수)", country: "kyrgyz", city: "jyrgalan", title: "지르갈란 다리 트레킹 및 카라콜 이동", icon: "fa-person-hiking", color: "text-emerald-500",
                 route: "지르갈란 ➔ 카라콜", travelTime: "지르갈란 ➔ 카라콜 (차량 약 1.5~2시간)",
                 accommodation: "카라콜 (Karakol Guesthouse/Hotel)",
                 schedule: [
@@ -744,10 +757,11 @@
                     { time: "이동", activity: "트레킹 완료 후 키르기스스탄 역사 도시 카라콜(Karakol)로 이동", icon: "fa-car" },
                     { time: "휴식", activity: "카라콜 시내 숙소 체크인 및 한식/현지식 저녁 식사 후 휴식", icon: "fa-hotel" }
                 ],
-                tasks: ["트레킹 중 관절 보호용 보호대 및 트레킹 폴 준비", "우천 대비용 가벼운 3단 접이식 우산이나 판초 우의 지참", "지르갈란의 신선한 유제품/마을 분위기 감상"]
+                tasks: ["트레킹 중 관절 보호용 보호대 및 트레킹 폴 준비", "우천 대비용 가벼운 3단 접이식 우산이나 판초 우의 지참", "지르갈란의 신선한 유제품/마을 분위기 감상"],
+                essentialGear: ["무릎보호대", "트레킹 폴", "우산/우의"]
             },
             {
-                day: 7, date: "7/23 (목)", country: "kyrgyz", title: "천상의 유황 노천 온천 알틴아라산", icon: "fa-hot-tub-person", color: "text-teal-600",
+                day: 7, date: "7/23 (목)", country: "kyrgyz", city: "karakol", title: "천상의 유황 노천 온천 알틴아라산", icon: "fa-hot-tub-person", color: "text-teal-600",
                 route: "카라콜 ➔ 알틴아라산", travelTime: "4WD 차량 약 1시간 30분",
                 accommodation: "알틴아라산 산장 (Altyn-Arashan Lodge)", remark: "무릎보호대",
                 schedule: [
@@ -756,10 +770,11 @@
                     { time: "온천욕", activity: "야외 노천 온천 및 목조 온천탕에서 천연 유황 온천욕 진행", icon: "fa-hot-tub-person", highlight: true },
                     { time: "산장숙박", activity: "알틴아라산 산장에서의 별빛 가득한 고산 밤 투숙", icon: "fa-home" }
                 ],
-                tasks: ["★알틴아라산 급경사 및 하이킹 대비 무릎보호대 착용 필수", "온천욕을 위한 개인 수영 의류 및 비치 타월 지참", "전력 및 온수가 한정적일 수 있으므로 보조배터리 및 손전등 지참"]
+                tasks: ["★알틴아라산 급경사 및 하이킹 대비 무릎보호대 착용 필수", "온천욕을 위한 개인 수영 의류 및 비치 타월 지참", "전력 및 온수가 한정적일 수 있으므로 보조배터리 및 손전등 지참"],
+                essentialGear: ["무릎보호대", "수영복", "개인 수건", "보조배터리", "헤드랜턴"]
             },
             {
-                day: 8, date: "7/24 (금)", country: "kyrgyz", title: "알틴아라산 하산 및 카라콜 투어", icon: "fa-mountain-sun", color: "text-blue-600",
+                day: 8, date: "7/24 (금)", country: "kyrgyz", city: "karakol", title: "알틴아라산 하산 및 카라콜 투어", icon: "fa-mountain-sun", color: "text-blue-600",
                 route: "알틴아라산 ➔ 카라콜", travelTime: "4WD 차량 약 1시간 30분",
                 accommodation: "카라콜 (Karakol Guesthouse/Hotel)",
                 schedule: [
@@ -767,10 +782,11 @@
                     { time: "시내투어", activity: "못을 사용하지 않고 지은 목조 러시아 정교회 교회 및 둔간 이슬람 사원 투어", icon: "fa-place-of-worship", highlight: true },
                     { time: "휴식", activity: "카라콜 시내 쇼핑 및 현지 레스토랑 저녁식사 후 숙박", icon: "fa-hotel" }
                 ],
-                tasks: ["4WD 하산 시 요동이 심하므로 멀미약 필요한 경우 사전 복용", "종교 시설(교회/사원) 방문 시 단정한 복장 착용", "카라콜 로컬 시장에서 신선한 꿀/과일 쇼핑"]
+                tasks: ["4WD 하산 시 요동이 심하므로 멀미약 필요한 경우 사전 복용", "종교 시설(교회/사원) 방문 시 단정한 복장 착용", "카라콜 로컬 시장에서 신선한 꿀/과일 쇼핑"],
+                essentialGear: ["멀미약", "단정한 복장 (사원 방문용)", "로컬 쇼핑 지갑"]
             },
             {
-                day: 9, date: "7/25 (토)", country: "kyrgyz", title: "제티오구스 조망과 붉은 미로 스카즈카", icon: "fa-heart-crack", color: "text-nomad-terracotta",
+                day: 9, date: "7/25 (토)", country: "kyrgyz", city: "issyk_kochkor", title: "제티오구스 조망과 붉은 미로 스카즈카", icon: "fa-heart-crack", color: "text-nomad-terracotta",
                 route: "카라콜 ➔ 제티오구스 ➔ 스카즈카 ➔ 이식쿨 남해안", travelTime: "제티오구스 (약 40분), 스카즈카 (약 1시간 30분), 이식쿨 (약 40분)",
                 accommodation: "이식쿨 남부 유르트 (South Issyk-Kul Yurt)", remark: "생수 챙기기, 비 오면 안 가기",
                 schedule: [
@@ -778,10 +794,11 @@
                     { time: "스카즈카", activity: "붉은 진흙 미로 언덕 스카즈카(Skazka) 캐년 1시간 걷기 트레킹", icon: "fa-person-hiking", highlight: true },
                     { time: "유르트캠프", activity: "거대 이식쿨 호수 남안의 유목민 전통 텐트 '유르트 캠프' 배정 및 숙박", icon: "fa-campground" }
                 ],
-                tasks: ["★스카즈카 협곡 내 그늘이 없으므로 식수/생수 꼭 챙기기", "★비가 오면 진흙이 미끄러워 위험하므로 우천 시 트레킹 취소 또는 대체 경로 논의", "이식쿨 호숫가 모래 사장 산책용 샌들 지참"]
+                tasks: ["★스카즈카 협곡 내 그늘이 없으므로 식수/생수 꼭 챙기기", "★비가 오면 진흙이 미끄러워 위험하므로 우천 시 트레킹 취소 또는 대체 경로 논의", "이식쿨 호숫가 모래 사장 산책용 샌들 지참"],
+                essentialGear: ["식수 1.5L 이상", "슬리퍼/샌들", "우비"]
             },
             {
-                day: 10, date: "7/26 (일)", country: "kyrgyz", title: "코치코르 거쳐 하늘 아래 거울 송쿨호수로", icon: "fa-car-side", color: "text-nomad-gold",
+                day: 10, date: "7/26 (일)", country: "kyrgyz", city: "songkul", title: "코치코르 거쳐 하늘 아래 거울 송쿨호수로", icon: "fa-car-side", color: "text-nomad-gold",
                 route: "이식쿨 ➔ 코치코르 ➔ 33패스 ➔ 송쿨호수", travelTime: "차량 약 4시간 30분",
                 accommodation: "송쿨 유르트 (Song-Kul Yurt)", remark: "은하수 감상",
                 schedule: [
@@ -790,10 +807,11 @@
                     { time: "33패스", activity: "지그재그 험난한 고개인 33패스 전망대(Teskei Torpok Pass) 조망", icon: "fa-image" },
                     { time: "송쿨호수", activity: "해발 3,016m의 거울 호수 송쿨(Song-Kul) 도착, 평원 산책 및 은하수 감상", icon: "fa-star", highlight: true }
                 ],
-                tasks: ["송쿨호수 고지대 밤의 급격한 저온 대비 보온 의류 준비", "★밤에 불빛이 완전히 차단되는 유르트 캠프에서 쏟아지는 은하수 감상", "송쿨은 데이터가 제한되므로 오프라인 상태 대비"]
+                tasks: ["송쿨호수 고지대 밤의 급격한 저온 대비 보온 의류 준비", "★밤에 불빛이 완전히 차단되는 유르트 캠프에서 쏟아지는 은하수 감상", "송쿨은 데이터가 제한되므로 오프라인 상태 대비"],
+                essentialGear: ["경량 패딩/핫팩", "보조배터리", "오프라인 지도"]
             },
             {
-                day: 11, date: "7/27 (월)", country: "kyrgyz", title: "송쿨 자유시간 후 수도 비슈케크 이동", icon: "fa-city", color: "text-cyan-600",
+                day: 11, date: "7/27 (월)", country: "kyrgyz", city: "songkul", title: "송쿨 자유시간 후 수도 비슈케크 이동", icon: "fa-city", color: "text-cyan-600",
                 route: "송쿨호수 ➔ 비슈케크", travelTime: "차량 약 5시간",
                 accommodation: "비슈케크 (Bishkek)", remark: "패딩, 핫팩",
                 schedule: [
@@ -801,10 +819,11 @@
                     { time: "이동", activity: "송쿨호수를 떠나 키르기스스탄 수도 비슈케크(Bishkek)로 이동 (차량 5시간)", icon: "fa-route" },
                     { time: "힐링", activity: "비슈케크 도심 도착, 한식당에서 식사 후 마사지로 피로 해소", icon: "fa-spa", highlight: true }
                 ],
-                tasks: ["★오전 송쿨호수의 추위와 강풍에 대비하여 패딩 및 핫팩 착용", "장거리 장시간 차량 이동 시 사용할 편안한 목베개 소지", "비슈케크 도착 후 카드 결제(트래블로그 등) 가능 여부 확인"]
+                tasks: ["★오전 송쿨호수의 추위와 강풍에 대비하여 패딩 및 핫팩 착용", "장거리 장시간 차량 이동 시 사용할 편안한 목베개 소지", "비슈케크 도착 후 카드 결제(트래블로그 등) 가능 여부 확인"],
+                essentialGear: ["경량 패딩/핫팩", "목베개", "보조배터리"]
             },
             {
-                day: 12, date: "7/28 (화)", country: "kyrgyz", title: "알라아르차 국립공원 만년설 트레킹", icon: "fa-person-hiking", color: "text-emerald-700",
+                day: 12, date: "7/28 (화)", country: "kyrgyz", city: "bishkek", title: "알라아르차 국립공원 만년설 트레킹", icon: "fa-person-hiking", color: "text-emerald-700",
                 route: "비슈케크 ➔ 알라아르차 ➔ 비슈케크", travelTime: "왕복 약 1시간 30분",
                 accommodation: "비슈케크 (Bishkek)",
                 schedule: [
@@ -812,10 +831,11 @@
                     { time: "선택 트레킹", activity: "빙하 폭포 코스(상 난이도, 7.4km, 왕복 6시간) 또는 텝시고원 코스(중 난이도, 3시간) 트레킹 진행", icon: "fa-person-hiking", highlight: true },
                     { time: "복귀", activity: "비슈케크 도심 복귀 및 휴식", icon: "fa-hotel" }
                 ],
-                tasks: ["알라아르차 고산 계곡 바람 대비 든든한 방한 바람막이 재킷 지참", "트레킹 시 다리와 발목 보호를 위한 등산화 및 스틱 착용", "충분한 식수 1.5L 지참"]
+                tasks: ["알라아르차 고산 계곡 바람 대비 든든한 방한 바람막이 재킷 지참", "트레킹 시 다리와 발목 보호를 위한 등산화 및 스틱 착용", "충분한 식수 1.5L 지참"],
+                essentialGear: ["방한 바람막이", "등산화", "트레킹 폴", "식수 1.5L"]
             },
             {
-                day: 13, date: "7/29 (수)", country: "kyrgyz", title: "국경을 건너 다시 카자흐 알마티로", icon: "fa-passport", color: "text-blue-800",
+                day: 13, date: "7/29 (수)", country: "kyrgyz", city: "almaty", title: "국경을 건너 다시 카자흐 알마티로", icon: "fa-passport", color: "text-blue-800",
                 route: "비슈케크 ➔ 코르다이 국경 ➔ 알마티 시내", travelTime: "국경 대기 포함 약 4~5시간",
                 accommodation: "알마티 (Almaty)", expense: "6~7만원 (이동 비용 등)", remark: "예약 또는 현지",
                 schedule: [
@@ -823,10 +843,11 @@
                     { time: "도보국경", activity: "코르다이 국경을 도보로 통과하여 카자흐스탄 입국 심사 진행", icon: "fa-passport", highlight: true },
                     { time: "알마티", activity: "대기 차량 탑승하여 알마티 시내 호텔 체크인 및 휴식", icon: "fa-hotel" }
                 ],
-                tasks: ["★코르다이 도보 국경 수속 시 수하물 및 귀중품 안전 확보에 각별히 유의", "알마티 복귀 후의 숙소 예약 상태 최종 재확인", "남은 솜(KGS)을 텐게(KZT) 또는 달러로 환전"]
+                tasks: ["★코르다이 도보 국경 수속 시 수하물 및 귀중품 안전 확보에 각별히 유의", "알마티 복귀 후의 숙소 예약 상태 최종 재확인", "남은 솜(KGS)을 텐게(KZT) 또는 달러로 환전"],
+                essentialGear: ["여권 원본", "텡게(KZT) 현금"]
             },
             {
-                day: 14, date: "7/30 (목)", country: "kazakh", title: "빅알마티 호수와 콕토베 야경", icon: "fa-image", color: "text-teal-700",
+                day: 14, date: "7/30 (목)", country: "kazakh", city: "almaty", title: "빅알마티 호수와 콕토베 야경", icon: "fa-image", color: "text-teal-700",
                 route: "알마티 ➔ 빅알마티 호수 ➔ 콕토베 ➔ 알마티", travelTime: "왕복 약 2시간",
                 accommodation: "알마티 (Almaty)", remark: "여권지참 필수",
                 schedule: [
@@ -834,10 +855,11 @@
                     { time: "콕토베", activity: "알마티 도심이 내려다보이는 콕토베(Kok-Tobe) 언덕 케이블카 탑승", icon: "fa-cable-car" },
                     { time: "야경", activity: "콕토베 정상에서 눈부신 도심 야경 조망 및 맛있는 저녁 식사", icon: "fa-moon" }
                 ],
-                tasks: ["★빅알마티 호수 주변은 국경 경비 구역이므로 여권 실물 반드시 소지", "야간 콕토베 바람 대비 얇은 아웃도어 재킷 지참", "콕토베 케이블카 탑승 시간 체크"]
+                tasks: ["★빅알마티 호수 주변은 국경 경비 구역이므로 여권 실물 반드시 소지", "야간 콕토베 바람 대비 얇은 아웃도어 재킷 지참", "콕토베 케이블카 탑승 시간 체크"],
+                essentialGear: ["여권 원본 (국경경비구역)", "얇은 아웃도어 재킷"]
             },
             {
-                day: 15, date: "7/31 (금)", country: "kazakh", title: "기념품 구매 및 귀국 여정", icon: "fa-plane-departure", color: "text-slate-900",
+                day: 15, date: "7/31 (금)", country: "kazakh", city: "almaty", title: "기념품 구매 및 귀국 여정", icon: "fa-plane-departure", color: "text-slate-900",
                 route: "알마티 ➔ ALA 공항 ➔ 기내", travelTime: "공항 이동 약 40분",
                 accommodation: "기내 (In-flight)", remark: "아라산 바냐",
                 schedule: [
@@ -845,34 +867,69 @@
                     { time: "바냐체험", activity: "역사적인 아라산 바냐(Arasan Baths) 대리석 돔 아래 터키 세라믹 스파/목욕탕 체험", icon: "fa-hot-tub-person", highlight: true },
                     { time: "출국", activity: "알마티 국제공항(ALA)으로 이동하여 출국 수속 및 기내 숙박", icon: "fa-plane-departure" }
                 ],
-                tasks: ["위탁 수하물 허용 한도 무게(23kg 기준) 최종 점검", "초콜릿 및 액체류 기념품은 기내 반입이 불가하므로 위탁 수하물로 포장", "★아라산 바냐 이용을 위한 세면도구 및 개인 의류 지참"]
+                tasks: ["위탁 수하물 허용 한도 무게(23kg 기준) 최종 점검", "초콜릿 및 액체류 기념품은 기내 반입이 불가하므로 위탁 수하물로 포장", "★아라산 바냐 이용을 위한 세면도구 및 개인 의류 지참"],
+                essentialGear: ["세면도구 (아라산 바냐용)", "여권 원본"]
             }
         ];
 
         const masterChecklistData = {
-            "환전 및 서류": [
-                "6개월 이상 유효기간 여권 원본",
-                "카자흐스탄 무비자/키르기스스탄 무비자 조건 확인",
-                "미화 달러(USD) 신권 준비 (구권은 환전 수수료가 높거나 거부될 수 있음)",
-                "여행자 보험 가입 증명서"
+            "여권 및 중요 서류": [
+                "6개월 이상 유효기간 여권 실물 & 여권 컬러 사본 2부",
+                "QazETA 모바일 어플 설치 및 사전 ETA 발급 신청 상태 확인",
+                "여행자 보험 증서 (3,000m 이상 고산 트레킹, 긴급 이송 포함 확인)",
+                "항공권 e-ticket, 숙소/차량 예약 확인서 출력본",
+                "외교부 안내 무사증 체류 기간 규정 재확인 (카자흐 30일/키르기스 30일)",
+                "비상 연락처 목록 및 여권용 증명사진 2매, 필기용 볼펜"
             ],
             "방한 및 아웃도어 의류": [
-                "초경량 패딩 또는 플리스 재킷 (고산지대 밤은 겨울 날씨)",
-                "목덜미 먼지 차단용 버프/스카프",
-                "접이식 우산 및 아웃도어 방수 바람막이",
-                "쿠션감과 발목 보호가 되는 하이킹 러닝슈즈"
+                "경량 패딩 또는 플리스 재킷 (송쿨/알틴아라산 고산 야간 대비)",
+                "방수·방풍 기능성 바람막이 재킷 (후드 타입)",
+                "얇은 내복(상·하의) 1세트 (유르트 야간 보온용)",
+                "기능성 반팔 티셔츠 4장, 얇은 긴팔 티셔츠 2장",
+                "등산바지 2벌, 반바지 1벌, 편한 잠옷/이동용 바지 1벌",
+                "수영복 1벌 (이식쿨 호수 및 알틴아라산 노천 유황 온천용)",
+                "보온 비니, 얇은 장갑, 목 차단용 버프/목토시, 챙 넓은 모자"
             ],
-            "전자기기": [
-                "20,000mAh 이상 고용량 보조 배터리 (유르트 전기 공급 불량 대비)",
-                "액션캠 또는 가벼운 브이로그 카메라(DJI 액션4/V10)",
-                "호주/중앙아 통합형 멀티 어댑터",
-                "각 지역 오프라인 얀덱스 지도 다운로드"
+            "트레킹 & 전문 장비": [
+                "발목 보호 및 수분 방어 기능이 검증된 등산화 (새 신발 금지)",
+                "트레킹 폴 1세트 (급경사 알틴아라산 및 고산 하이킹용)",
+                "헤드랜턴 및 여비 배터리 (송쿨 유르트 밤 이동용)",
+                "식수 보관용 물통 또는 물주머니 (최소 1.5L ~ 2L)",
+                "자외선 차단 선글라스 & 선크림 (SPF 50+)",
+                "관절 보호용 무릎보호대 & 스포츠테이프",
+                "물집 방지용 밴드 (컴피드 등) 및 우비/판초"
             ],
-            "상비약/비상식량": [
-                "송쿨 호수(3,000m) 대비용 이뇨제 성분 고산병약",
-                "오프로드 이동용 멀미약 및 설사약",
-                "이물질 대비 인공눈물 및 강력 선크림",
-                "유르트에서 유용한 가벼운 컵라면 또는 고추장"
+            "유르트 & 고산 숙박 대비": [
+                "위생 및 보온용 침낭 라이너 (또는 경량 패딩 침낭)",
+                "20,000mAh 이하 보조배터리 1개 (기내 휴대용 규격)",
+                "귀마개 및 안대 (유르트 다인실 소음 대비 필수)",
+                "빠르게 마르는 스포츠 속건 타월 및 개인 위생용 물티슈",
+                "유르트 내부/샤워장 이동 시 신을 가벼운 슬리퍼",
+                "다용도 드라이백 또는 지퍼백 (빨랫줄 & 집게 몇 개)",
+                "개인 세면용품 (여행용 샴푸, 비누 등 소량 포장)"
+            ],
+            "의약품 & 고산병 예방": [
+                "송쿨 호수(3,016m) 대비용 고산병약 (처방 필수)",
+                "장거리 오프로드 이동용 멀미약 & 물갈이 대비 지사제",
+                "평소 복용약 및 여유분 (성분 확인용 처방전 포함)",
+                "종합 감기약, 진통 해열제, 소화제, 항히스타민제",
+                "벌레 기피제 스프레이 및 벌레 물림 연고",
+                "상처 소독약, 대역붕대, 기본 대일밴드 & 거즈"
+            ],
+            "식수, 비상식량 & 전자기기": [
+                "오프라인 얀덱스 지도(Yandex Map) & 번역 앱 사전 다운로드",
+                "탈수 방지용 이온음료 전해질 분말 5~8포",
+                "고에너지 행동식 (에너지바 6개, 견과류, 초콜릿)",
+                "즉석 누룽지, 전투식량, 즉석국 등 비상 한식 3회분",
+                "여행용 범용 멀티 어댑터 & 예비 충전 케이블",
+                "휴대용 정수 필터 또는 정수 알약 (비상용)"
+            ],
+            "현금 & 결제 수단": [
+                "미국 달러(USD) 깨끗한 신권 현물 (구권은 환전 거부 주의)",
+                "카자흐스탄 텡게(KZT) 소액 현금 (식당, 팁 대비)",
+                "키르기스스탄 솜(KGS) 소액 현금 (유르트, 승마 비용)",
+                "해외 사용 가능한 신용/체크카드 2장 (브랜드 분산)",
+                "현금 분실 대비 분할 보관용 간이 보조지갑"
             ]
         };
 
@@ -998,38 +1055,11 @@
                 document.getElementById('bishkek-humidity').innerHTML = `<i class="fa-solid fa-droplet text-[8px]"></i> 습도 ${bishkekData.main.humidity}%`;
                 document.getElementById('bishkek-wind').innerHTML = `<i class="fa-solid fa-wind text-[8px]"></i> ${Math.round(bishkekData.wind.speed * 3.6)}km/h`;
 
-                const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=Bishkek,kg&units=metric&appid=${weatherApiKey}&lang=kr`;
-                const forecastData = await fetchWithRetry(forecastUrl);
-                const dailyForecasts = forecastData.list.filter(item => item.dt_txt.includes("12:00:00"));
-                
-                const forecastContainer = document.getElementById('forecast-container');
-                forecastContainer.innerHTML = dailyForecasts.map(item => {
-                    const date = new Date(item.dt * 1000);
-                    const month = date.getMonth() + 1;
-                    const day = date.getDate();
-                    const dayName = date.toLocaleDateString('ko-KR', { weekday: 'short' });
-                    const fullLabel = `${month}/${day} (${dayName})`;
-                    const temp = Math.round(item.main.temp);
-                    const main = item.weather[0].main.toLowerCase();
-                    let fIcon = "fa-cloud-sun";
-                    if (main.includes('rain')) fIcon = "fa-cloud-rain";
-                    else if (main.includes('clear')) fIcon = "fa-sun";
-                    else if (main.includes('cloud')) fIcon = "fa-cloud";
-                    return `
-                        <div class="forecast-card bg-slate-50 rounded-2xl p-3 flex flex-col items-center border border-slate-100 shadow-sm">
-                            <span class="text-[9px] font-bold text-slate-500 uppercase leading-tight mb-1">${fullLabel}</span>
-                            <i class="fa-solid ${fIcon} text-nomad-teal my-1.5 text-xs"></i>
-                            <span class="text-xs font-black text-slate-800">${temp}°</span>
-                        </div>
-                    `;
-                }).join('');
-
-                // Cache all weather data
+                // Cache current weather data
                 const weatherCache = {
                     almaty: { temp: almatyData.main.temp, desc: almatyData.weather[0].description, humidity: almatyData.main.humidity, wind: almatyData.wind.speed },
                     karakol: { temp: karakolData.main.temp, desc: karakolData.weather[0].description, humidity: karakolData.main.humidity, wind: karakolData.wind.speed },
-                    bishkek: { temp: bishkekData.main.temp, desc: bishkekData.weather[0].description, humidity: bishkekData.main.humidity, wind: bishkekData.wind.speed },
-                    forecast: dailyForecasts.map(item => ({ dt: item.dt, temp: item.main.temp, main: item.weather[0].main }))
+                    bishkek: { temp: bishkekData.main.temp, desc: bishkekData.weather[0].description, humidity: bishkekData.main.humidity, wind: bishkekData.wind.speed }
                 };
                 localStorage.setItem('cached_weather', JSON.stringify(weatherCache));
 
@@ -1088,6 +1118,89 @@
             }
         }
 
+        async function updateForecast(queryCity, labelText) {
+            const labelEl = document.getElementById('forecast-city-label');
+            if (labelEl) {
+                labelEl.innerText = `(${labelText})`;
+            }
+
+            const forecastContainer = document.getElementById('forecast-container');
+            if (!forecastContainer) return;
+
+            // Show loading state
+            forecastContainer.innerHTML = `<div class="w-full text-center text-xs text-nomad-muted loading-pulse py-2">기상 예보를 불러오는 중...</div>`;
+
+            try {
+                const cacheKey = `forecast_${queryCity}`;
+                let dailyForecasts = null;
+                const cachedData = localStorage.getItem(cacheKey);
+                const cachedTime = localStorage.getItem(`${cacheKey}_time`);
+                
+                // Cache valid for 30 minutes
+                if (cachedData && cachedTime && (Date.now() - parseInt(cachedTime) < 30 * 60 * 1000)) {
+                    dailyForecasts = JSON.parse(cachedData);
+                } else {
+                    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${queryCity}&units=metric&appid=${weatherApiKey}&lang=kr`;
+                    const forecastData = await fetchWithRetry(forecastUrl);
+                    dailyForecasts = forecastData.list.filter(item => item.dt_txt.includes("12:00:00"));
+                    
+                    localStorage.setItem(cacheKey, JSON.stringify(dailyForecasts));
+                    localStorage.setItem(`${cacheKey}_time`, Date.now().toString());
+                }
+
+                forecastContainer.innerHTML = dailyForecasts.map(item => {
+                    const date = new Date(item.dt * 1000);
+                    const month = date.getMonth() + 1;
+                    const day = date.getDate();
+                    const dayName = date.toLocaleDateString('ko-KR', { weekday: 'short' });
+                    const fullLabel = `${month}/${day} (${dayName})`;
+                    const temp = Math.round(item.main.temp);
+                    const main = item.weather[0].main.toLowerCase();
+                    let fIcon = "fa-cloud-sun";
+                    if (main.includes('rain')) fIcon = "fa-cloud-rain";
+                    else if (main.includes('clear')) fIcon = "fa-sun";
+                    else if (main.includes('cloud')) fIcon = "fa-cloud";
+                    return `
+                        <div class="forecast-card bg-slate-50 rounded-2xl p-3 flex flex-col items-center border border-slate-100 shadow-sm">
+                            <span class="text-[9px] font-bold text-slate-500 uppercase leading-tight mb-1">${fullLabel}</span>
+                            <i class="fa-solid ${fIcon} text-nomad-teal my-1.5 text-xs"></i>
+                            <span class="text-xs font-black text-slate-800">${temp}°</span>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error("Forecast fetch failed:", err);
+                const cached = localStorage.getItem('cached_weather');
+                if (cached) {
+                    const data = JSON.parse(cached);
+                    if (data.forecast) {
+                        forecastContainer.innerHTML = data.forecast.map(item => {
+                            const date = new Date(item.dt * 1000);
+                            const month = date.getMonth() + 1;
+                            const day = date.getDate();
+                            const dayName = date.toLocaleDateString('ko-KR', { weekday: 'short' });
+                            const fullLabel = `${month}/${day} (${dayName})`;
+                            const temp = Math.round(item.temp);
+                            const main = item.main.toLowerCase();
+                            let fIcon = "fa-cloud-sun";
+                            if (main.includes('rain')) fIcon = "fa-cloud-rain";
+                            else if (main.includes('clear')) fIcon = "fa-sun";
+                            else if (main.includes('cloud')) fIcon = "fa-cloud";
+                            return `
+                                <div class="forecast-card bg-slate-50 rounded-2xl p-3 flex flex-col items-center border border-slate-100 shadow-sm">
+                                    <span class="text-[9px] font-bold text-slate-500 uppercase leading-tight mb-1">${fullLabel}</span>
+                                    <i class="fa-solid ${fIcon} text-nomad-teal my-1.5 text-xs"></i>
+                                    <span class="text-xs font-black text-slate-800">${temp}°</span>
+                                </div>
+                            `;
+                        }).join('');
+                        return;
+                    }
+                }
+                forecastContainer.innerHTML = `<span class="text-xs text-rose-500 py-2">예보 로드 실패</span>`;
+            }
+        }
+
         async function fetchExchangeRates() {
             try {
                 const response = await fetchWithRetry(`https://open.er-api.com/v6/latest/USD`);
@@ -1131,31 +1244,54 @@
         }
 
         // Itinerary state management
-        let currentCountry = 'kazakh';
+        let currentCity = 'all';
         let currentDayIdx = 0; // index within the filtered list
 
-        function filterItinerary(country) {
-            currentCountry = country;
-            currentDayIdx = 0; // Reset to the first day of the selected country
+        const cities = ['all', 'almaty', 'charyn_kolsai', 'jyrgalan', 'karakol', 'issyk_kochkor', 'songkul', 'bishkek'];
 
-            const btnKaz = document.getElementById('btn-itinerary-kazakh');
-            const btnKyr = document.getElementById('btn-itinerary-kyrgyz');
+        function filterItinerary(city) {
+            currentCity = city;
+            currentDayIdx = 0; // Reset to the first day of the selected city
 
-            if (country === 'kazakh') {
-                btnKaz.className = "px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all bg-nomad-terracotta text-white shadow-sm";
-                btnKyr.className = "px-4 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted";
-            } else {
-                btnKaz.className = "px-4 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted";
-                btnKyr.className = "px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all bg-nomad-terracotta text-white shadow-sm";
-            }
+            cities.forEach(c => {
+                const btn = document.getElementById(`btn-itinerary-${c}`);
+                if (!btn) return;
+                if (c === city) {
+                    btn.className = "px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all bg-nomad-terracotta text-white shadow-sm whitespace-nowrap";
+                } else {
+                    btn.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted whitespace-nowrap";
+                }
+            });
 
             renderDayTabs();
             renderDayContent();
+
+            // Dynamic weather forecast updates
+            let queryCity = "Bishkek,kg";
+            let labelText = "전체 - 비슈케크 기준";
+            if (city === "almaty" || city === "charyn_kolsai") {
+                queryCity = "Almaty,kz";
+                labelText = city === "almaty" ? "알마티" : "차른/콜사이";
+            } else if (city === "jyrgalan" || city === "karakol" || city === "issyk_kochkor") {
+                queryCity = "Karakol,kg";
+                if (city === "jyrgalan") labelText = "지르갈란";
+                else if (city === "karakol") labelText = "카라콜";
+                else labelText = "이식쿨";
+            } else if (city === "songkul") {
+                queryCity = "Bishkek,kg";
+                labelText = "송쿨";
+            } else if (city === "bishkek") {
+                queryCity = "Bishkek,kg";
+                labelText = "비슈케크";
+            }
+            updateForecast(queryCity, labelText);
         }
 
         function renderDayTabs() {
             const container = document.getElementById('day-tabs');
-            const filteredData = itineraryData.filter(d => d.country === currentCountry);
+            const filteredData = currentCity === 'all' 
+                ? itineraryData 
+                : itineraryData.filter(d => d.city === currentCity);
             
             container.innerHTML = filteredData.map((d, i) => `
                 <button onclick="switchDay(${i})" class="flex-shrink-0 px-5 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-sm ${i === currentDayIdx ? 'tab-active' : 'tab-inactive'}">
@@ -1171,7 +1307,9 @@
         }
 
         function renderDayContent() {
-            const filteredData = itineraryData.filter(d => d.country === currentCountry);
+            const filteredData = currentCity === 'all' 
+                ? itineraryData 
+                : itineraryData.filter(d => d.city === currentCity);
             const data = filteredData[currentDayIdx];
             const container = document.getElementById('day-content');
             
@@ -1214,6 +1352,22 @@
                 </div>
             ` : '';
 
+            // Essential gear indicator
+            const gearHTML = data.essentialGear && data.essentialGear.length > 0 ? `
+                <div class="mt-4 pt-3.5 border-t border-slate-200/60">
+                    <span class="text-[9px] font-black text-nomad-muted uppercase block leading-none mb-2.5">
+                        <i class="fa-solid fa-suitcase mr-1 text-nomad-teal"></i> 오늘 필수 장비 (Today's Gear)
+                    </span>
+                    <div class="flex flex-wrap gap-1.5">
+                        ${data.essentialGear.map(g => `
+                            <span class="px-2.5 py-1 rounded-xl text-[10px] font-extrabold bg-nomad-teal/10 text-nomad-teal border border-nomad-teal/10 flex items-center">
+                                <span class="w-1 h-1 rounded-full bg-nomad-teal mr-1.5"></span> ${g}
+                            </span>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : '';
+
             // Beautiful Route & Duration Card panel inside the tab body
             const routePanel = `
                 <div class="mb-6 bg-nomad-sand border-2 border-dashed border-nomad-teal/20 rounded-3xl p-5">
@@ -1240,6 +1394,7 @@
                         ${expenseHTML}
                     </div>
                     ${remarkHTML}
+                    ${gearHTML}
                 </div>
             `;
 
@@ -1297,25 +1452,43 @@
 
         function renderMasterChecklist() {
             const container = document.getElementById('master-checklist-container');
-            container.innerHTML = Object.entries(masterChecklistData).map(([category, items]) => `
-                <div class="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
-                    <div>
-                        <h5 class="font-bold text-nomad-dark text-sm mb-4 flex items-center">
-                            <span class="w-1.5 h-1.5 rounded-full bg-nomad-teal mr-2"></span> ${category}
-                        </h5>
-                        <div class="space-y-3">
-                            ${items.map(item => `
-                                <label class="check-item flex items-start cursor-pointer group">
-                                    <input type="checkbox" class="sr-only peer">
-                                    <div class="w-4 h-4 border-2 border-slate-200 rounded-md mr-2.5 flex items-center justify-center transition-all peer-checked:bg-nomad-teal peer-checked:border-nomad-teal mt-0.5"><i class="fa-solid fa-check text-white text-[8px]"></i></div>
-                                    <span class="text-[11px] text-nomad-muted group-hover:text-nomad-dark peer-checked:line-through peer-checked:text-slate-300 leading-tight">${item}</span>
-                                </label>
-                            `).join('')}
+            const savedStates = JSON.parse(localStorage.getItem('master_checklist_states') || '{}');
+            
+            container.innerHTML = Object.entries(masterChecklistData).map(([category, items]) => {
+                const categoryKey = category.replace(/[^a-zA-Z0-9가-힣]/g, '_');
+                return `
+                    <div class="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <h5 class="font-bold text-nomad-dark text-sm mb-4 flex items-center">
+                                <span class="w-1.5 h-1.5 rounded-full bg-nomad-teal mr-2"></span> ${category}
+                            </h5>
+                            <div class="space-y-3">
+                                ${items.map((item, i) => {
+                                    const itemKey = `${categoryKey}_${i}`;
+                                    const isChecked = savedStates[itemKey] ? 'checked' : '';
+                                    return `
+                                        <label class="check-item flex items-start cursor-pointer group">
+                                            <input type="checkbox" id="${itemKey}" onchange="saveChecklistState('${itemKey}')" ${isChecked} class="sr-only peer">
+                                            <div class="w-4 h-4 border-2 border-slate-200 rounded-md mr-2.5 flex items-center justify-center transition-all peer-checked:bg-nomad-teal peer-checked:border-nomad-teal mt-0.5"><i class="fa-solid fa-check text-white text-[8px]"></i></div>
+                                            <span class="text-[11px] text-nomad-muted group-hover:text-nomad-dark peer-checked:line-through peer-checked:text-slate-300 leading-tight">${item}</span>
+                                        </label>
+                                    `;
+                                }).join('')}
+                            </div>
                         </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
+
+        window.saveChecklistState = function(itemKey) {
+            const checkbox = document.getElementById(itemKey);
+            const savedStates = JSON.parse(localStorage.getItem('master_checklist_states') || '{}');
+            if (checkbox) {
+                savedStates[itemKey] = checkbox.checked;
+            }
+            localStorage.setItem('master_checklist_states', JSON.stringify(savedStates));
+        };
 
         function initScenicChart() {
             const ctx = document.getElementById('scenicChart').getContext('2d');
@@ -1528,7 +1701,7 @@
             initMap();
             fetchWeather();
             fetchExchangeRates();
-            filterItinerary('kazakh'); // Default to Kazakhstan
+            filterItinerary('all'); // Default to all
             renderMasterChecklist();
             initScenicChart();
             renderPhrases('kazakh');
