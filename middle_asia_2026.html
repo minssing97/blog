@@ -344,8 +344,8 @@
 
                         <!-- Phrasebook tabs -->
                         <div class="flex space-x-1 bg-slate-100 p-1 rounded-xl">
-                            <button onclick="switchLanguage('kazakh')" id="btn-lang-kazakh" class="flex-1 py-1 rounded-lg text-[9px] font-bold transition-all bg-white text-nomad-dark shadow-sm">카자흐스탄</button>
-                            <button onclick="switchLanguage('kyrgyz')" id="btn-lang-kyrgyz" class="flex-1 py-1 rounded-lg text-[9px] font-bold transition-all text-nomad-muted">키르기스스탄</button>
+                            <button type="button" onclick="switchLanguage('kazakh')" id="btn-lang-kazakh" aria-pressed="true" class="flex-1 py-1 rounded-lg text-[9px] font-bold transition-all bg-white text-nomad-dark shadow-sm">카자흐스탄</button>
+                            <button type="button" onclick="switchLanguage('kyrgyz')" id="btn-lang-kyrgyz" aria-pressed="false" class="flex-1 py-1 rounded-lg text-[9px] font-bold transition-all text-nomad-muted">키르기스스탄</button>
                         </div>
 
                         <!-- Phrase List Container -->
@@ -372,11 +372,11 @@
                             
                             <!-- Accordion UI for Contacts and offline map -->
                             <div class="space-y-2">
-                                <button onclick="toggleGuideContent('emergency-contact')" class="w-full text-left p-3.5 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-100 flex justify-between items-center transition-all">
+                                <button type="button" id="btn-guide-emergency-contact" onclick="toggleGuideContent('emergency-contact')" aria-controls="guide-content-emergency-contact" aria-expanded="false" class="w-full text-left p-3.5 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-100 flex justify-between items-center transition-all">
                                     <span class="text-xs font-black text-nomad-dark"><i class="fa-solid fa-phone-volume text-rose-500 mr-2"></i> 비상대사관 연락처</span>
                                     <i class="fa-solid fa-chevron-down text-[10px] text-nomad-muted" id="icon-emergency-contact"></i>
                                 </button>
-                                <button onclick="toggleGuideContent('offline-map')" class="w-full text-left p-3.5 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-100 flex justify-between items-center transition-all">
+                                <button type="button" id="btn-guide-offline-map" onclick="toggleGuideContent('offline-map')" aria-controls="guide-content-offline-map" aria-expanded="false" class="w-full text-left p-3.5 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-100 flex justify-between items-center transition-all">
                                     <span class="text-xs font-black text-nomad-dark"><i class="fa-solid fa-map-location-dot text-nomad-teal mr-2"></i> 오프라인 맵 팁</span>
                                     <i class="fa-solid fa-chevron-down text-[10px] text-nomad-muted" id="icon-offline-map"></i>
                                 </button>
@@ -580,6 +580,59 @@
                 { kor: "도와주세요!", original: "Жардам бериңизчи!", pron: "자르담 베리니즈치!" }
             ]
         };
+
+        function renderPhrases(language) {
+            const phrases = phrasebook[language];
+            const container = document.getElementById('phrase-list-container');
+            if (!phrases || !container) return;
+
+            container.replaceChildren();
+            phrases.forEach(phrase => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'w-full text-left p-2.5 bg-slate-50 hover:bg-nomad-teal/5 rounded-xl border border-slate-100 transition-colors';
+                button.innerHTML = `
+                    <span class="block text-[9px] font-bold text-nomad-muted">${phrase.kor}</span>
+                    <span class="block text-xs font-black text-nomad-dark">${phrase.original}</span>
+                    <span class="block text-[9px] font-medium text-nomad-teal">${phrase.pron}</span>
+                `;
+                button.addEventListener('click', () => {
+                    copyText(`${phrase.original} (${phrase.pron})`, phrase.kor);
+                });
+                container.appendChild(button);
+            });
+
+            ['kazakh', 'kyrgyz'].forEach(lang => {
+                const button = document.getElementById(`btn-lang-${lang}`);
+                if (!button) return;
+                const isActive = lang === language;
+                button.setAttribute('aria-pressed', String(isActive));
+                button.className = isActive
+                    ? 'flex-1 py-1 rounded-lg text-[9px] font-bold transition-all bg-white text-nomad-dark shadow-sm'
+                    : 'flex-1 py-1 rounded-lg text-[9px] font-bold transition-all text-nomad-muted';
+            });
+        }
+
+        function switchLanguage(language) {
+            renderPhrases(language);
+        }
+
+        function toggleGuideContent(type) {
+            const selectedContent = document.getElementById(`guide-content-${type}`);
+            if (!selectedContent) return;
+
+            const shouldOpen = selectedContent.classList.contains('hidden');
+            ['emergency-contact', 'offline-map'].forEach(guideType => {
+                const content = document.getElementById(`guide-content-${guideType}`);
+                const icon = document.getElementById(`icon-${guideType}`);
+                const button = document.getElementById(`btn-guide-${guideType}`);
+                const isSelected = guideType === type && shouldOpen;
+
+                if (content) content.classList.toggle('hidden', !isSelected);
+                if (icon) icon.classList.toggle('rotate-180', isSelected);
+                if (button) button.setAttribute('aria-expanded', String(isSelected));
+            });
+        }
 
         
         // 9 Lodging 예약 확인서 상세 정보 (알마티 첫 숙소 추가)
@@ -1884,25 +1937,6 @@
                 ledgerEntries = [];
                 saveLedger();
                 renderLedger();
-            }
-        }
-
-        function switchGuide(type) {
-            const btnEmergency = document.getElementById('btn-guide-emergency');
-            const btnOfflineMap = document.getElementById('btn-guide-offline-map');
-            const contentEmergency = document.getElementById('guide-content-emergency');
-            const contentOfflineMap = document.getElementById('guide-content-offline-map');
-
-            if (type === 'emergency') {
-                btnEmergency.className = "flex-1 py-1 rounded-lg text-[9px] font-bold transition-all bg-white text-nomad-dark shadow-sm";
-                btnOfflineMap.className = "flex-1 py-1 rounded-lg text-[9px] font-bold transition-all text-nomad-muted";
-                contentEmergency.classList.remove('hidden');
-                contentOfflineMap.classList.add('hidden');
-            } else {
-                btnEmergency.className = "flex-1 py-1 rounded-lg text-[9px] font-bold transition-all text-nomad-muted";
-                btnOfflineMap.className = "flex-1 py-1 rounded-lg text-[9px] font-bold transition-all bg-white text-nomad-dark shadow-sm";
-                contentEmergency.classList.add('hidden');
-                contentOfflineMap.classList.remove('hidden');
             }
         }
 
