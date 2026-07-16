@@ -6,8 +6,6 @@
     <title>카자흐스탄 & 키르기스스탄 힐링 모험</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Leaflet JS (Map) -->
@@ -43,18 +41,6 @@
             background-color: #fcfaf2; /* nomad-sand */
             color: #2c3539;
             -webkit-tap-highlight-color: transparent;
-        }
-
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 600px;
-            margin: 0 auto;
-            height: 280px;
-        }
-        
-        @media (min-width: 768px) {
-            .chart-container { height: 350px; }
         }
 
         #map {
@@ -433,20 +419,6 @@
                             </div>
                         </div>
                     </div>
-                            </button>
-                            <button onclick="updateRadarChart(4)" class="text-left p-4 bg-white rounded-2xl shadow-sm border-2 border-transparent hover:border-nomad-teal transition-all flex justify-between items-center group">
-                                <span class="font-bold text-xs text-nomad-dark group-hover:text-nomad-teal">Jyrgalan Valley (지르갈란 계곡) - 청정 야생화 트레킹</span>
-                                <i class="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-nomad-teal"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center">
-                        <div class="chart-container">
-                            <canvas id="scenicChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </section>
         </div> <!-- /home-tab -->
 
@@ -1787,34 +1759,6 @@
             localStorage.setItem('master_checklist_states', JSON.stringify(savedStates));
         };
 
-        function initScenicChart() {
-            const ctx = document.getElementById('scenicChart').getContext('2d');
-            window.scenicChartInstance = new Chart(ctx, {
-                type: 'radar',
-                data: {
-                    labels: ['경치(Scenic)', '액티비티(Activity)', '문명격리성(Off-Grid)', '난이도(Difficulty)', '온도쾌적도(Temp)'],
-                    datasets: [
-                        { label: 'Charyn Canyon', data: [5, 4, 4, 3, 2], borderColor: '#c85a32', backgroundColor: 'rgba(200, 90, 50, 0.1)', pointRadius: 0 },
-                        { label: 'Issyk-Kul Lake', data: [5, 3, 2, 1, 5], borderColor: '#007a87', backgroundColor: 'rgba(0, 122, 135, 0.1)', hidden: true, pointRadius: 0 },
-                        { label: 'Song-Kul Lake', data: [5, 5, 5, 4, 2], borderColor: '#d4af37', backgroundColor: 'rgba(212, 175, 55, 0.1)', hidden: true, pointRadius: 0 },
-                        { label: 'Altyn-Arashan', data: [5, 5, 4, 4, 2], borderColor: '#059669', backgroundColor: 'rgba(5, 150, 105, 0.1)', hidden: true, pointRadius: 0 },
-                        { label: 'Jyrgalan Valley', data: [5, 4, 4, 3, 3], borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.1)', hidden: true, pointRadius: 0 }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: { r: { suggestedMin: 0, suggestedMax: 5, grid: { color: '#f0f0f0' }, pointLabels: { font: { size: 10 } } } },
-                    plugins: { legend: { display: false } }
-                }
-            });
-        }
-
-        function updateRadarChart(idx) {
-            window.scenicChartInstance.data.datasets.forEach((d, i) => d.hidden = i !== idx);
-            window.scenicChartInstance.update();
-        }
-
         function scrollToSection(id) {
             // 탭 전환 매핑: section ID → tab ID
             const sectionTabMap = {
@@ -2061,7 +2005,6 @@
             fetchExchangeRates();
             filterItinerary('all'); // Default to all
             renderMasterChecklist();
-            initScenicChart();
             renderPhrases('kazakh');
             loadLedger();
             renderPrintSection();
