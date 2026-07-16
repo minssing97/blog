@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>브리즈번 힐링 여행</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet JS (Map) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brisbane: {
+                            sand: '#f5f5dc',
+                            teal: '#008080',
+                            coral: '#ff7f50',
+                            sun: '#ffd700',
+                            light: '#fdfbf7',
+                            dark: '#2d3748'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Noto Sans KR', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #fdfbf7;
+            color: #2d3748;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            height: 280px;
+        }
+        
+        @media (min-width: 768px) {
+            .chart-container { height: 350px; }
+        }
+
+        #map {
+            height: 350px;
+            width: 100%;
+            border-radius: 1.5rem;
+            z-index: 1;
+        }
+
+        @media (min-width: 768px) {
+            #map { height: 500px; }
+        }
+
+        .tab-active {
+            background-color: #ff7f50;
+            color: white;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        
+        .tab-inactive {
+            background-color: white;
+            color: #94a3b8;
+            border: 1px solid #f1f5f9;
+        }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .weather-gradient {
+            background: linear-gradient(135deg, #6dd5ed, #2193b0);
+        }
+
+        .loading-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+
+        .hotel-popup .leaflet-popup-content-wrapper {
+            background: #008080;
+            color: white;
+            border-radius: 12px;
+        }
+        .hotel-popup .leaflet-popup-tip { background: #008080; }
+
+        .map-label {
+            background-color: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #333;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            white-space: nowrap;
+        }
+
+        .hotel-label {
+            background-color: #008080;
+            border: 1px solid #005a5a;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: 800;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            white-space: nowrap;
+        }
+
+        .forecast-card { min-width: 95px; flex-shrink: 0; }
+        
+        .check-item input:checked + div {
+            background-color: #008080;
+            border-color: #008080;
+        }
+    </style>
+    <!-- Chosen Palette: Warm Neutrals with Teal, Coral, and Sun Yellow Accents -->
+    <!-- Application Structure Plan: 
+        1. Hero: Displays title in Korean.
+        2. Live Dashboard: Real-time data remains live. 
+        3. Map: Place names in English for local navigational parity.
+        4. Itinerary: All activity descriptions and schedule titles now in Korean.
+        5. Checklist: All daily task items translated to Korean for better usability by family members.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Navigation -->
+    <nav class="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-koala text-2xl text-brisbane-teal"></i>
+                    <span class="font-bold text-lg tracking-tight text-gray-800">브리즈번 힐링 여행</span>
+                </div>
+                <div class="hidden md:flex space-x-6 text-sm font-medium">
+                    <button onclick="scrollToSection('dashboard')" class="text-gray-600 hover:text-brisbane-teal transition">실시간 정보</button>
+                    <button onclick="scrollToSection('map-section')" class="text-gray-600 hover:text-brisbane-teal transition">여행 지도</button>
+                    <button onclick="scrollToSection('itinerary')" class="text-gray-600 hover:text-brisbane-teal transition">상세 일정</button>
+                    <button onclick="scrollToSection('master-checklist')" class="text-gray-600 hover:text-brisbane-teal transition">준비물</button>
+                </div>
+                <div class="md:hidden flex space-x-3 text-gray-500">
+                    <button onclick="scrollToSection('dashboard')"><i class="fa-solid fa-cloud-sun"></i></button>
+                    <button onclick="scrollToSection('map-section')"><i class="fa-solid fa-map-marked-alt"></i></button>
+                    <button onclick="scrollToSection('itinerary')"><i class="fa-solid fa-calendar-check"></i></button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="bg-gradient-to-br from-brisbane-teal to-teal-800 text-white py-10 md:py-16">
+        <div class="max-w-6xl mx-auto px-6 text-center">
+            <div class="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] md:text-xs font-bold mb-4 uppercase tracking-[0.2em]">
+                Brisbane 2026 • Healing & Jogging
+            </div>
+            <h1 class="text-4xl md:text-6xl font-extrabold mb-4 tracking-tight text-white">브리즈번 힐링 여행</h1>
+            <p class="text-sm md:text-lg opacity-90 max-w-xl mx-auto font-light leading-relaxed">가족과 함께 걷고, 뛰고, 쉬는 소중한 일주일의 기록</p>
+        </div>
+    </header>
+
+    <main class="flex-grow">
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="py-6 max-w-6xl mx-auto px-4">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
+                
+                <!-- Weather & Forecast -->
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="weather-gradient rounded-[2rem] p-6 text-white shadow-lg flex flex-col justify-between h-44 relative overflow-hidden">
+                        <div class="flex justify-between items-start z-10">
+                            <div>
+                                <h3 class="font-bold text-sm">현재 브리즈번 날씨</h3>
+                                <p class="text-[10px] opacity-80" id="weather-date">날씨 데이터를 불러오는 중...</p>
+                            </div>
+                            <div id="weather-icon-container">
+                                <i class="fa-solid fa-cloud-sun text-2xl"></i>
+                            </div>
+                        </div>
+                        <div class="z-10 flex items-end">
+                            <span class="text-5xl font-extrabold" id="current-temp">--°</span>
+                            <div class="ml-4 pb-1">
+                                <p class="text-sm font-bold" id="weather-desc">확인 중...</p>
+                                <p class="text-[9px] opacity-75" id="feels-like">체감 온도 --°</p>
+                            </div>
+                        </div>
+                        <div class="text-[9px] opacity-80 border-t border-white/20 pt-2 flex justify-between z-10">
+                            <span id="humidity-val"><i class="fa-solid fa-droplet mr-1 text-[8px]"></i> 습도 --%</span>
+                            <span id="wind-val"><i class="fa-solid fa-wind mr-1 text-[8px]"></i> 풍속 -- km/h</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-[2rem] p-5 shadow-sm border border-gray-100">
+                        <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 px-2">7일간의 날씨 예보</h4>
+                        <div id="forecast-container" class="flex space-x-4 overflow-x-auto no-scrollbar pb-2 px-1 text-center"></div>
+                    </div>
+                </div>
+
+                <!-- Info Column -->
+                <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 h-full flex flex-col justify-between">
+                        <h3 class="font-bold text-gray-700 text-xs flex items-center">
+                            <i class="fa-solid fa-hotel mr-2 text-brisbane-teal"></i> 숙소 보금자리
+                        </h3>
+                        <div class="py-4">
+                            <p class="text-sm font-bold text-brisbane-dark mb-1">Atrio Apartments</p>
+                            <p class="text-[10px] text-gray-500 leading-relaxed font-medium">29 Robertson Street, Fortitude Valley</p>
+                            <p class="text-[10px] text-gray-600 mt-1 font-bold"><i class="fa-solid fa-phone mr-1"></i> +61 7 3177 3339</p>
+                        </div>
+                        <button onclick="focusHotel()" class="text-[10px] bg-brisbane-teal text-white w-full py-2 rounded-xl hover:bg-teal-700 transition font-bold shadow-sm">숙소 위치 보기</button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="bg-white rounded-[2rem] p-5 shadow-sm border border-gray-100">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">실시간 환율 (AUD/KRW)</span>
+                                <span class="text-[8px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold uppercase">Live</span>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <span class="text-xl font-bold text-brisbane-dark" id="exchange-rate-val">---</span>
+                                <div class="flex items-center space-x-1 bg-gray-50 p-1.5 rounded-lg flex-grow">
+                                    <input type="number" id="aud-calc" value="100" class="w-12 bg-transparent border-none p-0 text-xs font-bold focus:ring-0 text-center">
+                                    <span class="text-[9px] text-gray-400">AUD =</span>
+                                    <span class="text-xs font-bold text-brisbane-teal" id="krw-calc-res">---</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-[2rem] p-4 shadow-sm border border-gray-100 text-center">
+                            <div class="flex space-x-2">
+                                <div class="flex-1 bg-red-50 p-2 rounded-xl border border-red-100 shadow-sm">
+                                    <span class="text-sm block">❤️</span>
+                                    <span class="text-[9px] font-bold text-red-700">CityHopper</span>
+                                </div>
+                                <div class="flex-1 bg-blue-50 p-2 rounded-xl border border-blue-100 shadow-sm">
+                                    <span class="text-sm block">💙</span>
+                                    <span class="text-[9px] font-bold text-blue-700">CityCat</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Map Section -->
+        <section id="map-section" class="py-6 bg-gray-50">
+            <div class="max-w-6xl mx-auto px-4">
+                <div class="mb-4">
+                    <h2 class="text-xl font-bold text-brisbane-dark flex items-center">
+                        <span class="w-1 h-5 bg-brisbane-coral mr-2 rounded-full"></span> 여행 지도 탐방 (English Places)
+                    </h2>
+                </div>
+                <div id="map" class="shadow-xl border-4 border-white"></div>
+            </div>
+        </section>
+
+        <!-- Itinerary Section -->
+        <section id="itinerary" class="py-10 max-w-6xl mx-auto px-4">
+            <h2 class="text-xl font-bold text-brisbane-dark mb-6 flex items-center">
+                <span class="w-1 h-5 bg-brisbane-teal mr-2 rounded-full"></span> 상세 일정 및 일일 체크리스트
+            </h2>
+            <div class="flex overflow-x-auto space-x-2 mb-8 pb-4 no-scrollbar -mx-4 px-4" id="day-tabs"></div>
+            <div id="day-content" class="bg-white rounded-[2.5rem] shadow-sm p-6 md:p-10 border border-gray-50 transition-all duration-300 min-h-[500px]"></div>
+        </section>
+
+        <!-- Master Checklist -->
+        <section id="master-checklist" class="py-12 bg-white border-t border-gray-100">
+            <div class="max-w-6xl mx-auto px-4">
+                <div class="mb-10 text-center">
+                    <h2 class="text-2xl font-bold text-brisbane-dark mb-2">여행 통합 마스터 체크리스트</h2>
+                    <p class="text-sm text-gray-500 font-light">출발 전 모든 준비 사항을 꼼꼼하게 확인하세요.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="master-checklist-container"></div>
+            </div>
+        </section>
+
+        <!-- Jogging Section -->
+        <section id="jogging" class="py-12 bg-brisbane-sand/10">
+            <div class="max-w-6xl mx-auto px-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+                    <div class="text-center md:text-left">
+                        <h2 class="text-xl font-bold text-brisbane-dark mb-4 text-brisbane-teal">상쾌한 아침을 여는 러닝</h2>
+                        <p class="text-sm text-gray-500 mb-8 leading-relaxed font-light">숙소 인근에서 즐길 수 있는 최적의 조깅 코스를 분석했습니다.</p>
+                        <div class="flex flex-col space-y-3">
+                            <button onclick="updateJoggingChart(0)" class="text-left p-4 bg-white rounded-2xl shadow-sm border-2 border-transparent hover:border-brisbane-teal transition-all flex justify-between items-center group">
+                                <h4 class="font-bold text-sm group-hover:text-brisbane-teal">1. City Botanic Gardens (Mon)</h4>
+                                <i class="fa-solid fa-chevron-right text-[10px] text-gray-300 group-hover:text-brisbane-teal"></i>
+                            </button>
+                            <button onclick="updateJoggingChart(1)" class="text-left p-4 bg-white rounded-2xl shadow-sm border-2 border-transparent hover:border-brisbane-teal transition-all flex justify-between items-center group">
+                                <h4 class="font-bold text-sm group-hover:text-brisbane-teal">2. South Bank Riverside (Tue)</h4>
+                                <i class="fa-solid fa-chevron-right text-[10px] text-gray-300 group-hover:text-brisbane-teal"></i>
+                            </button>
+                            <button onclick="updateJoggingChart(2)" class="text-left p-4 bg-white rounded-2xl shadow-sm border-2 border-transparent hover:border-brisbane-teal transition-all flex justify-between items-center group">
+                                <h4 class="font-bold text-sm group-hover:text-brisbane-teal">3. New Farm Riverwalk (Thu)</h4>
+                                <i class="fa-solid fa-chevron-right text-[10px] text-gray-300 group-hover:text-brisbane-teal"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-3xl shadow-sm flex flex-col items-center border border-gray-100 shadow-inner">
+                        <div class="chart-container">
+                            <canvas id="joggingChart"></canvas>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mt-4 tracking-tighter">* 코스별 qualitative 지표 분석</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-brisbane-dark text-white py-12 text-center">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-center space-x-8 text-xl opacity-60 mb-6">
+                <i class="fa-solid fa-person-running"></i>
+                <i class="fa-solid fa-koala"></i>
+                <i class="fa-solid fa-heart"></i>
+            </div>
+            <p class="text-[10px] opacity-40 uppercase tracking-[0.2em]">Brisbane 2026 Family Healing Trip</p>
+        </div>
+    </footer>
+
+    <script>
+        const weatherApiKey = "0127bef44dbb798277979e0b6c680a3f"; 
+        let currentRate = 890.5;
+        let mapInstance;
+        let hotelMarker;
+
+        async function fetchWithRetry(url, options = {}, retries = 5, backoff = 1000) {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) throw new Error('API Error');
+                return await response.json();
+            } catch (err) {
+                if (retries > 0) {
+                    await new Promise(r => setTimeout(r, backoff));
+                    return fetchWithRetry(url, options, retries - 1, backoff * 2);
+                }
+                throw err;
+            }
+        }
+
+        const itineraryData = [
+            { 
+                day: 1, date: "2/15 (일)", title: "도착 및 시티 입성", icon: "fa-plane-arrival", color: "text-blue-500", 
+                schedule: [
+                    {time: "08:05", activity: "브리즈번 공항 도착", icon: "fa-plane"}, 
+                    {time: "11:00", activity: "Atrio Apartments 숙소 체크인", icon: "fa-key"}, 
+                    {time: "12:10", activity: "점심 식사: Betty's Burgers", icon: "fa-hamburger"}, 
+                    {time: "13:30", activity: "❤️ Holman St 선착장에서 무료 페리 탑승", icon: "fa-ferry", highlight: true}, 
+                    {time: "14:00", activity: "Genki Market 구경 및 기념품 쇼핑", icon: "fa-shopping-bag"},
+                    {time: "14:30", activity: "Queen Street Mall 탐방", icon: "fa-store"},
+                    {time: "16:30", activity: "City Botanic Gardens 일몰 피크닉", icon: "fa-sun"}
+                ],
+                tasks: ["호주 전자비자(ETA) 승인 상태 확인", "아트리오 아파트먼트 위치 구글맵에 저장", "고카드(Go Card) 구입 또는 컨택리스 카드 준비"]
+            },
+            { 
+                day: 2, date: "2/16 (월)", title: "문화와 예술의 날", icon: "fa-palette", color: "text-green-600", 
+                schedule: [
+                    {time: "06:30", activity: "🏃 아침 조깅: City Botanic Gardens", icon: "fa-person-running", highlight: true}, 
+                    {time: "10:00", activity: "QAGOMA 현대 미술관 관람", icon: "fa-image"}, 
+                    {time: "11:30", activity: "퀸즐랜드 주립 도서관(State Library) 방문", icon: "fa-book"},
+                    {time: "12:35", activity: "점심 식사: Julius Pizzeria", icon: "fa-pizza-slice"},
+                    {time: "14:45", activity: "Lune Croissanterie에서 디저트 구매", icon: "fa-bread-slice"},
+                    {time: "15:15", activity: "South Bank Parklands에서 휴식", icon: "fa-umbrella-beach"}, 
+                    {time: "18:30", activity: "💙 CityCat 타고 Howard Smith Wharves 이동", icon: "fa-ferry"}
+                ],
+                tasks: ["조깅용 운동복 및 러닝화 상태 확인", "장보기를 위한 장바구니(에코백) 챙기기", "보조배터리 완충해두기"]
+            },
+            { 
+                day: 3, date: "2/17 (화)", title: "패딩턴 힐링 산책", icon: "fa-house", color: "text-orange-500", 
+                schedule: [
+                    {time: "06:30", activity: "🏃 아침 조깅: South Bank Riverside 코스", icon: "fa-person-running", highlight: true}, 
+                    {time: "10:00", activity: "Paddington 지역 Empire Revival 구경", icon: "fa-gem"}, 
+                    {time: "11:00", activity: "Paddington Social에서 커피 타임", icon: "fa-coffee"},
+                    {time: "12:40", activity: "점심 식사: Marinara Trattoria", icon: "fa-utensils"},
+                    {time: "14:00", activity: "Streets Beach(South Bank)에서 수영", icon: "fa-water"}, 
+                    {time: "17:30", activity: "Kangaroo Point Cliffs 야경 산책", icon: "fa-moon"}
+                ],
+                tasks: ["수영복 및 비치 타월 챙기기", "패딩턴 언덕길을 위한 편한 신발 신기", "선크림 꼼꼼히 바르기"]
+            },
+            { 
+                day: 4, date: "2/18 (수)", title: "노스 스트래드브록 섬 여행", icon: "fa-island-tropical", color: "text-teal-500", 
+                schedule: [
+                    {time: "08:00", activity: "섬으로 출발 (선착장 이동 및 페리 탑승)", icon: "fa-ship"}, 
+                    {time: "Full Day", activity: "Point Lookout 힐링 산책 및 야생동물 관찰", icon: "fa-binoculars", highlight: true},
+                    {time: "Evening", activity: "시티 복귀 및 숙소 휴식", icon: "fa-bed"}
+                ],
+                tasks: ["섬 이동용 멀미약 준비", "야생 동물 관찰용 망원경 또는 카메라 배터리 확인", "간단한 간식 및 음료 챙기기"]
+            },
+            { 
+                day: 5, date: "2/19 (목)", title: "제임스 스트리트 쇼핑", icon: "fa-users", color: "text-purple-500", 
+                schedule: [
+                    {time: "06:30", activity: "🏃 아침 조깅: New Farm Riverwalk 코스", icon: "fa-person-running", highlight: true}, 
+                    {time: "11:40", activity: "Brunch: The Green에서 식사", icon: "fa-leaf"},
+                    {time: "13:00", activity: "James Street 부티크 및 상점 쇼핑", icon: "fa-shopping-cart"}, 
+                    {time: "15:00", activity: "❤️ Holman St 선착장에서 무료 페리 탑승", icon: "fa-ferry"}, 
+                    {time: "18:00", activity: "Riverside에서 가족 저녁 식사", icon: "fa-utensils"}
+                ],
+                tasks: ["가족 합류 지점 및 시간 다시 확인", "인기 레스토랑 예약 내역 확인", "촬영 장비(DJI/V10) 확인"]
+            },
+            { 
+                day: 6, date: "2/20 (금)", title: "골드코스트 데이 트립", icon: "fa-sun", color: "text-yellow-500", 
+                schedule: [
+                    {time: "Full Day", activity: "Surfers Paradise(Gold Coast) 방문", icon: "fa-water"}, 
+                    {time: "19:00", activity: "숙소 복귀 후 스테이크 파티 🥩", icon: "fa-fire", highlight: true}
+                ],
+                tasks: ["프리미엄 소고기 및 와인 미리 사두기", "물놀이 후 갈아입을 여벌 옷 준비", "골드코스트행 트레인 시간표 확인"]
+            },
+            { 
+                day: 7, date: "2/21 (토)", title: "마켓 투어 및 출국", icon: "fa-plane-departure", color: "text-gray-500", 
+                schedule: [
+                    {time: "07:00", activity: "West End Saturday Market 구경", icon: "fa-basket-shopping", highlight: true}, 
+                    {time: "09:30", activity: "우버(Uber) 타고 공항으로 이동", icon: "fa-car"}, 
+                    {time: "11:20", activity: "브리즈번 공항 출발 ✈️", icon: "fa-plane"}
+                ],
+                tasks: ["수하물 무게 최종 체크", "여권 및 소지품 재확인", "우버 예약 상태 확인"]
+            }
+        ];
+
+        const masterChecklistData = {
+            "필수 서류/카드": ["여권", "호주 전자비자(ETA) 승인", "항공권/숙소 바우처", "트래블로그 또는 쏠트래블 카드"],
+            "의류 및 잡화": ["조깅용 운동복 2세트", "러닝화", "수영복 및 래쉬가드", "선글라스 및 챙 넓은 모자", "얇은 겉옷"],
+            "전자기기": ["호주용 멀티 어댑터(ㅅ형)", "DJI 액션4 또는 캐논 V10", "보조 배터리", "유심 또는 로밍 신청"],
+            "상비약/위생": ["강력 선크림 (SPF50+)", "소화제, 감기약, 지사제", "휴대용 물티슈", "개인 위생용품 세트"]
+        };
+
+        function initMap() {
+            mapInstance = L.map('map', { scrollWheelZoom: false, zoomControl: false }).setView([-27.465, 153.025], 14);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(mapInstance);
+            
+            const spots = [
+                { name: "Queen Street Mall", lat: -27.4701, lng: 153.0260 },
+                { name: "South Bank Parklands", lat: -27.4772, lng: 153.0210 },
+                { name: "City Botanic Gardens", lat: -27.4744, lng: 153.0315 },
+                { name: "James Street", lat: -27.4583, lng: 153.0401 },
+                { name: "QAGOMA", lat: -27.4714, lng: 153.0175 },
+                { name: "Betty's Burgers", lat: -27.4695, lng: 153.0255 },
+                { name: "Howard Smith Wharves", lat: -27.4632, lng: 153.0371 },
+                { name: "Kangaroo Point Cliffs", lat: -27.4795, lng: 153.0355 },
+                { name: "West End Market", lat: -27.4844, lng: 153.0118 },
+                { name: "Woolworths Newstead", lat: -27.4526, lng: 153.0422 },
+                { name: "Paddington District", lat: -27.4611, lng: 153.0031 }
+            ];
+            
+            spots.forEach(m => {
+                L.marker([m.lat, m.lng])
+                    .addTo(mapInstance)
+                    .bindPopup(`<b>${m.name}</b>`)
+                    .bindTooltip(m.name, {
+                        permanent: true,
+                        direction: 'bottom',
+                        offset: [0, 5],
+                        className: 'map-label'
+                    });
+            });
+
+            hotelMarker = L.marker([-27.4579, 153.0376]).addTo(mapInstance)
+                .bindPopup('<b>Atrio Apartments</b>', { className: 'hotel-popup' })
+                .bindTooltip('🏠 Atrio Apartments', {
+                    permanent: true,
+                    direction: 'top',
+                    offset: [0, -5],
+                    className: 'hotel-label'
+                })
+                .openPopup();
+        }
+
+        function focusHotel() {
+            if (mapInstance && hotelMarker) {
+                mapInstance.setView([-27.4579, 153.0376], 16);
+                hotelMarker.openPopup();
+                scrollToSection('map-section');
+            }
+        }
+
+        async function fetchWeather() {
+            const tempEl = document.getElementById('current-temp');
+            const descEl = document.getElementById('weather-desc');
+            const forecastContainer = document.getElementById('forecast-container');
+            try {
+                const currentUrl = `https://api.openweathermap.org/data/2.5/weather?q=Brisbane,au&units=metric&appid=${weatherApiKey}`;
+                const currentData = await fetchWithRetry(currentUrl);
+                tempEl.innerText = `${Math.round(currentData.main.temp)}°`;
+                descEl.innerText = currentData.weather[0].main;
+                document.getElementById('weather-date').innerText = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
+                document.getElementById('feels-like').innerText = `체감 기온 ${Math.round(currentData.main.feels_like)}°`;
+                document.getElementById('humidity-val').innerHTML = `<i class="fa-solid fa-droplet"></i> 습도 ${currentData.main.humidity}%`;
+                document.getElementById('wind-val').innerHTML = `<i class="fa-solid fa-wind"></i> 풍속 ${Math.round(currentData.wind.speed * 3.6)}km/h`;
+                
+                const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=Brisbane,au&units=metric&appid=${weatherApiKey}`;
+                const forecastData = await fetchWithRetry(forecastUrl);
+                const dailyForecasts = forecastData.list.filter(item => item.dt_txt.includes("12:00:00"));
+                forecastContainer.innerHTML = dailyForecasts.map(item => {
+                    const date = new Date(item.dt * 1000);
+                    const month = date.getMonth() + 1;
+                    const day = date.getDate();
+                    const dayName = date.toLocaleDateString('ko-KR', { weekday: 'short' });
+                    const fullLabel = `${month}/${day} (${dayName})`;
+                    const temp = Math.round(item.main.temp);
+                    const main = item.weather[0].main.toLowerCase();
+                    let fIcon = "fa-cloud-sun";
+                    if (main.includes('rain')) fIcon = "fa-cloud-rain";
+                    else if (main.includes('clear')) fIcon = "fa-sun";
+                    else if (main.includes('cloud')) fIcon = "fa-cloud";
+                    return `
+                        <div class="forecast-card bg-gray-50 rounded-2xl p-3 flex flex-col items-center border border-gray-100 shadow-sm">
+                            <span class="text-[9px] font-bold text-gray-500 uppercase mb-1">${fullLabel}</span>
+                            <i class="fa-solid ${fIcon} text-brisbane-teal my-1.5 text-xs"></i>
+                            <span class="text-xs font-black text-gray-800">${temp}°</span>
+                        </div>
+                    `;
+                }).join('');
+                tempEl.classList.remove('loading-pulse');
+            } catch (err) { descEl.innerText = "에러 발생"; tempEl.classList.remove('loading-pulse'); }
+        }
+
+        async function fetchExchangeRate() {
+            try {
+                const data = await fetchWithRetry(`https://open.er-api.com/v6/latest/AUD`);
+                currentRate = data.rates.KRW;
+                document.getElementById('exchange-rate-val').innerText = currentRate.toLocaleString(undefined, { maximumFractionDigits: 1 });
+                updateCalc();
+            } catch (err) { document.getElementById('exchange-rate-val').innerText = "890.5"; }
+        }
+
+        function updateCalc() {
+            const aud = document.getElementById('aud-calc').value;
+            document.getElementById('krw-calc-res').innerText = (aud * currentRate).toLocaleString(undefined, { maximumFractionDigits: 0 });
+        }
+
+        let currentDayIdx = 0;
+        function renderTabs() {
+            const container = document.getElementById('day-tabs');
+            container.innerHTML = itineraryData.map((d, i) => `<button onclick="switchDay(${i})" class="flex-shrink-0 px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${i === currentDayIdx ? 'tab-active' : 'tab-inactive'}">${d.date}</button>`).join('');
+        }
+
+        function switchDay(idx) {
+            currentDayIdx = idx;
+            renderTabs();
+            renderContent();
+        }
+
+        function renderContent() {
+            const data = itineraryData[currentDayIdx];
+            const container = document.getElementById('day-content');
+            container.innerHTML = `
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2">
+                        <div class="flex items-center space-x-4 mb-8">
+                            <div class="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center shadow-inner"><i class="fa-solid ${data.icon} ${data.color} text-xl"></i></div>
+                            <div><h3 class="text-xl font-bold text-gray-800 tracking-tight">${data.title}</h3><p class="text-[10px] text-gray-400">Brisbane • ${data.date}</p></div>
+                        </div>
+                        <div class="space-y-4 border-l-2 border-gray-100 ml-6 pl-8">
+                            ${data.schedule.map(item => `
+                                <div class="relative py-2">
+                                    <div class="absolute -left-[41px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-4 border-white ${item.highlight ? 'bg-brisbane-coral scale-110 shadow-sm' : 'bg-gray-200'}"></div>
+                                    <div class="flex flex-col bg-gray-50/50 p-4 rounded-2xl border border-transparent hover:bg-white hover:shadow-sm transition-all"><span class="text-brisbane-teal font-black text-[10px] mb-1">${item.time}</span><span class="text-sm text-gray-700 font-semibold">${item.activity}</span></div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="lg:col-span-1">
+                        <div class="bg-gray-50 rounded-[2rem] p-6 border border-gray-100 h-full shadow-inner">
+                            <h4 class="font-bold text-gray-700 text-sm mb-4 flex items-center"><i class="fa-solid fa-clipboard-check mr-2 text-brisbane-coral"></i> 오늘의 체크리스트</h4>
+                            <div class="space-y-3">
+                                ${data.tasks.map((task, i) => `
+                                    <label class="check-item flex items-center cursor-pointer group">
+                                        <input type="checkbox" class="sr-only peer">
+                                        <div class="w-5 h-5 border-2 border-gray-300 rounded-lg mr-3 flex items-center justify-center transition-all peer-checked:bg-brisbane-teal peer-checked:border-brisbane-teal"><i class="fa-solid fa-check text-white text-[10px]"></i></div>
+                                        <span class="text-xs text-gray-600 group-hover:text-gray-900 peer-checked:line-through peer-checked:text-gray-400 leading-tight">${task}</span>
+                                    </label>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderMasterChecklist() {
+            const container = document.getElementById('master-checklist-container');
+            container.innerHTML = Object.entries(masterChecklistData).map(([category, items]) => `
+                <div class="bg-gray-50 rounded-[2rem] p-6 border border-gray-100 shadow-sm">
+                    <h5 class="font-bold text-gray-800 text-sm mb-4 flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-brisbane-teal mr-2"></span> ${category}</h5>
+                    <div class="space-y-3">
+                        ${items.map(item => `
+                            <label class="check-item flex items-center cursor-pointer group">
+                                <input type="checkbox" class="sr-only peer">
+                                <div class="w-4 h-4 border-2 border-gray-300 rounded-md mr-3 flex items-center justify-center transition-all peer-checked:bg-brisbane-teal peer-checked:border-brisbane-teal"><i class="fa-solid fa-check text-white text-[8px]"></i></div>
+                                <span class="text-[11px] text-gray-600 group-hover:text-gray-900 peer-checked:line-through peer-checked:text-gray-400 leading-tight">${item}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function initCharts() {
+            const ctx = document.getElementById('joggingChart').getContext('2d');
+            window.jogChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['경치', '평탄함', '그늘', '접근성', '정숙함'],
+                    datasets: [
+                        { label: 'Botanic Gardens', data: [4, 5, 5, 5, 4], borderColor: '#008080', backgroundColor: 'rgba(0, 128, 128, 0.1)', pointRadius: 0 },
+                        { label: 'South Bank', data: [5, 5, 3, 4, 3], borderColor: '#ff7f50', backgroundColor: 'rgba(255, 127, 80, 0.1)', hidden: true, pointRadius: 0 },
+                        { label: 'New Farm', data: [5, 4, 2, 3, 5], borderColor: '#2193b0', backgroundColor: 'rgba(33, 147, 176, 0.1)', hidden: true, pointRadius: 0 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { r: { suggestedMin: 0, suggestedMax: 5, grid: { color: '#f0f0f0' }, pointLabels: { font: { size: 10 } } } }, plugins: { legend: { display: false } } }
+            });
+        }
+
+        function updateJoggingChart(idx) {
+            window.jogChart.data.datasets.forEach((d, i) => d.hidden = i !== idx);
+            window.jogChart.update();
+        }
+
+        function scrollToSection(id) { document.getElementById(id).scrollIntoView({ behavior: 'smooth' }); }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            fetchWeather();
+            fetchExchangeRate();
+            renderTabs();
+            switchDay(0);
+            renderMasterChecklist();
+            initCharts();
+            document.getElementById('aud-calc').addEventListener('input', updateCalc);
+        });
+    </script>
+</body>
+</html>
