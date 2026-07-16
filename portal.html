@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="여행 대시보드와 AI 콘텐츠 도구를 한곳에서 여는 사이트 모음">
+    <title>사이트 모음 | Travel & AI Workspace</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --ink: #17232c;
+            --muted: #64727d;
+            --paper: #f6f2e8;
+            --card: rgba(255, 255, 255, 0.86);
+            --line: rgba(23, 35, 44, 0.12);
+            --teal: #167d78;
+            --teal-dark: #0d5956;
+            --gold: #d49a38;
+            --violet: #7157b9;
+            --shadow: 0 20px 60px rgba(37, 49, 53, 0.12);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--ink);
+            font-family: "Pretendard", "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at 10% 10%, rgba(22, 125, 120, 0.18), transparent 28rem),
+                radial-gradient(circle at 90% 5%, rgba(212, 154, 56, 0.18), transparent 24rem),
+                linear-gradient(145deg, #f8f5ec 0%, #eef3ef 100%);
+        }
+
+        a { color: inherit; }
+
+        .shell {
+            width: min(1120px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 28px 0 64px;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 56px;
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+        }
+
+        .brand-mark {
+            display: grid;
+            width: 38px;
+            height: 38px;
+            place-items: center;
+            border-radius: 13px;
+            color: white;
+            background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+            box-shadow: 0 10px 24px rgba(22, 125, 120, 0.25);
+        }
+
+        .primary-link {
+            padding: 10px 14px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 800;
+            background: rgba(255, 255, 255, 0.65);
+            transition: transform 160ms ease, background 160ms ease;
+        }
+
+        .primary-link:hover {
+            transform: translateY(-2px);
+            background: white;
+        }
+
+        .hero {
+            max-width: 780px;
+            margin-bottom: 42px;
+        }
+
+        .eyebrow {
+            margin: 0 0 12px;
+            color: var(--teal-dark);
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(38px, 7vw, 76px);
+            line-height: 1.02;
+            letter-spacing: -0.065em;
+        }
+
+        .hero p:last-child {
+            max-width: 650px;
+            margin: 22px 0 0;
+            color: var(--muted);
+            font-size: clamp(16px, 2vw, 19px);
+            line-height: 1.75;
+            word-break: keep-all;
+        }
+
+        .section-title {
+            margin: 40px 0 16px;
+            font-size: 15px;
+            letter-spacing: -0.02em;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .card {
+            position: relative;
+            min-height: 245px;
+            overflow: hidden;
+            padding: 26px;
+            border: 1px solid var(--line);
+            border-radius: 28px;
+            text-decoration: none;
+            background: var(--card);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(14px);
+            transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+        }
+
+        .card::after {
+            position: absolute;
+            right: -30px;
+            bottom: -45px;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: var(--accent-soft);
+            content: "";
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent);
+            box-shadow: 0 28px 70px rgba(37, 49, 53, 0.17);
+        }
+
+        .card.travel { --accent: var(--teal); --accent-soft: rgba(22, 125, 120, 0.15); }
+        .card.brisbane { --accent: var(--gold); --accent-soft: rgba(212, 154, 56, 0.18); }
+        .card.news { --accent: #3f6fc0; --accent-soft: rgba(63, 111, 192, 0.15); }
+        .card.writer { --accent: var(--violet); --accent-soft: rgba(113, 87, 185, 0.15); }
+
+        .card-icon {
+            display: grid;
+            width: 48px;
+            height: 48px;
+            place-items: center;
+            margin-bottom: 34px;
+            border-radius: 16px;
+            color: white;
+            font-size: 24px;
+            background: var(--accent);
+        }
+
+        .card h2 {
+            margin: 0 0 9px;
+            font-size: 23px;
+            letter-spacing: -0.035em;
+        }
+
+        .card p {
+            max-width: 88%;
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.65;
+            word-break: keep-all;
+        }
+
+        .card .arrow {
+            position: absolute;
+            right: 25px;
+            top: 25px;
+            color: var(--accent);
+            font-size: 24px;
+            font-weight: 900;
+        }
+
+        .note {
+            margin: 24px 2px 0;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.7;
+        }
+
+        @media (max-width: 720px) {
+            .shell { width: min(100% - 24px, 1120px); padding-top: 18px; }
+            .topbar { margin-bottom: 42px; }
+            .primary-link span { display: none; }
+            .grid { grid-template-columns: 1fr; }
+            .card { min-height: 220px; padding: 23px; border-radius: 24px; }
+            .card-icon { margin-bottom: 26px; }
+        }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <nav class="topbar" aria-label="사이트 모음 상단 메뉴">
+            <div class="brand">
+                <span class="brand-mark" aria-hidden="true">✦</span>
+                <span>Travel & AI Workspace</span>
+            </div>
+            <a class="primary-link" href="index.html">← <span>중앙아시아 대시보드로</span></a>
+        </nav>
+
+        <header class="hero">
+            <p class="eyebrow">Personal web collection</p>
+            <h1>필요한 화면으로<br>바로 이동하세요.</h1>
+            <p>여행 중 사용하는 대시보드와 AI 콘텐츠 제작 도구를 하나의 진입점에서 관리합니다. 각 카드는 독립 실행형 페이지로 연결됩니다.</p>
+        </header>
+
+        <h2 class="section-title">여행 대시보드</h2>
+        <section class="grid" aria-label="여행 대시보드">
+            <a class="card travel" href="index.html">
+                <span class="arrow" aria-hidden="true">↗</span>
+                <span class="card-icon" aria-hidden="true">⛰</span>
+                <h2>중앙아시아 대륙종단 2026</h2>
+                <p>실시간 날씨와 환율, 15일 일정, 지도, 숙소, 준비물, 오프라인 가계부를 모은 메인 대시보드</p>
+            </a>
+            <a class="card brisbane" href="%EB%B8%8C%EB%A6%AC%EC%A6%88%EB%B2%88_index.html">
+                <span class="arrow" aria-hidden="true">↗</span>
+                <span class="card-icon" aria-hidden="true">☀</span>
+                <h2>브리즈번 힐링 여행</h2>
+                <p>브리즈번 일정, 주요 명소, 날씨, 지도와 여행 체크리스트를 확인하는 모바일 여행 가이드</p>
+            </a>
+        </section>
+
+        <h2 class="section-title">AI 콘텐츠 도구</h2>
+        <section class="grid" aria-label="AI 콘텐츠 도구">
+            <a class="card news" href="ai_news.html">
+                <span class="arrow" aria-hidden="true">↗</span>
+                <span class="card-icon" aria-hidden="true">⌁</span>
+                <h2>AI 뉴스 & 블로그 에디터</h2>
+                <p>최신 AI 뉴스 후보를 모으고 선택한 자료를 바탕으로 분석형 블로그 초안을 만드는 편집 화면</p>
+            </a>
+            <a class="card writer" href="ai_blog_posting.html">
+                <span class="arrow" aria-hidden="true">↗</span>
+                <span class="card-icon" aria-hidden="true">✎</span>
+                <h2>AI 블로그 포스팅 생성기</h2>
+                <p>카테고리 조합, 주제 추천, 본문과 커버 이미지 프롬프트 생성을 단계별로 진행하는 작성 도구</p>
+            </a>
+        </section>
+
+        <p class="note">AI 도구는 Google Gemini API 키와 인터넷 연결이 필요합니다. 여행 대시보드의 저장 데이터는 현재 브라우저의 localStorage에 보관됩니다.</p>
+    </main>
+</body>
+</html>
