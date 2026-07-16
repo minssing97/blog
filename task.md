@@ -1,0 +1,6 @@
+- `[x]` Implement Offline Caching for weather and exchange rate APIs in `middle_asia_2026.html`
+- `[x]` Implement "PDF 저장 / 인쇄" button in nav and print-only CSS (`@media print`) in `middle_asia_2026.html`
+- `[x]` Implement "실크로드 여행 가계부" (LocalStorage Ledger) widget in `middle_asia_2026.html`
+- `[x]` Implement emergency contacts & offline map guide accordion in `middle_asia_2026.html`
+- [x] CSS 스타일 추가 및 레이아웃 수정
+- [x] HTML 구조 변경 (섹션들을 tab-panel로 감싸기)

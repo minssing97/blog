@@ -1,0 +1,2073 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>카자흐스탄 & 키르기스스탄 힐링 모험</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet JS (Map) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        nomad: {
+                            sand: '#fcfaf2',
+                            terracotta: '#c85a32',
+                            teal: '#007a87',
+                            gold: '#d4af37',
+                            dark: '#2c3539',
+                            muted: '#7f8c8d'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Noto Sans KR', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=300;400;500;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #fcfaf2; /* nomad-sand */
+            color: #2c3539;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            height: 280px;
+        }
+        
+        @media (min-width: 768px) {
+            .chart-container { height: 350px; }
+        }
+
+        #map {
+            height: 350px;
+            width: 100%;
+            border-radius: 2rem;
+            z-index: 1;
+        }
+
+        @media (min-width: 768px) {
+            #map { height: 500px; }
+        }
+
+        .tab-active {
+            background-color: #c85a32; /* terracotta */
+            color: white;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        
+        .tab-inactive {
+            background-color: white;
+            color: #7f8c8d;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .weather-gradient {
+            background: linear-gradient(135deg, #2c3e50, #007a87);
+        }
+
+        .loading-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+
+        .map-label {
+            background-color: rgba(255, 255, 255, 0.95);
+            border: 1.5px solid #007a87;
+            border-radius: 6px;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: 800;
+            color: #2c3539;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            white-space: nowrap;
+        }
+
+        .border-label {
+            background-color: #c85a32;
+            border: 1.5px solid #a04020;
+            border-radius: 6px;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: 800;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+            white-space: nowrap;
+        }
+
+        .forecast-card { min-width: 95px; flex-shrink: 0; }
+        
+        .check-item input:checked + div {
+            background-color: #007a87;
+            border-color: #007a87;
+        }
+
+        @media print {
+            body {
+                background-color: white !important;
+                color: black !important;
+                font-family: 'Noto Sans KR', sans-serif !important;
+            }
+            nav, header, main, footer, #toast {
+                display: none !important;
+            }
+            #print-section {
+                display: block !important;
+            }
+            .avoid-break {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+        }
+        #print-section {
+            display: none;
+        }
+
+        /* 탭 패널 기본 숨김 및 활성화 규칙 */
+        .tab-panel {
+            display: none;
+        }
+        .tab-panel.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* 활성화된 내비게이션 탭 버튼 스타일 강조 */
+        .nav-tab-active {
+            color: #007a87 !important;
+            border-bottom: 2px solid #007a87;
+            font-weight: 800;
+            padding-bottom: 4px;
+        }
+        .nav-tab-active-mobile {
+            color: #007a87 !important;
+            background-color: rgba(0, 122, 135, 0.08);
+            border-radius: 9999px;
+            padding: 6px;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Navigation -->
+    <nav class="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-2 cursor-pointer" onclick="switchTab('home')">
+                    <i class="fa-solid fa-mountain-sun text-2xl text-nomad-teal"></i>
+                    <span class="font-extrabold text-sm md:text-lg tracking-tight text-nomad-dark">실크로드 힐링 어드벤처</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-6 text-sm font-bold">
+                    <button id="nav-tab-home" onclick="switchTab('home')" class="text-gray-600 hover:text-nomad-teal transition nav-tab-active">실시간 정보</button>
+                    <button id="nav-tab-itinerary" onclick="switchTab('itinerary')" class="text-gray-600 hover:text-nomad-teal transition">상세 일정</button>
+                    <button id="nav-tab-map" onclick="switchTab('map')" class="text-gray-600 hover:text-nomad-teal transition">여행 지도</button>
+                    <button id="nav-tab-accommodation" onclick="switchTab('accommodation')" class="text-gray-600 hover:text-nomad-teal transition">숙소 정보</button>
+                    <button id="nav-tab-checklist" onclick="switchTab('checklist')" class="text-gray-600 hover:text-nomad-teal transition">준비물</button>
+                    <button onclick="window.print()" class="bg-nomad-teal text-white px-3 py-1.5 rounded-xl hover:bg-nomad-teal/90 transition shadow-sm flex items-center space-x-1.5 text-xs font-black">
+                        <i class="fa-solid fa-file-pdf"></i>
+                        <span>PDF 저장</span>
+                    </button>
+                </div>
+                <div class="md:hidden flex items-center space-x-4 text-nomad-muted">
+                    <button id="nav-tab-mobile-home" onclick="switchTab('home')" class="nav-tab-active-mobile"><i class="fa-solid fa-cloud-sun"></i></button>
+                    <button id="nav-tab-mobile-itinerary" onclick="switchTab('itinerary')"><i class="fa-solid fa-calendar-check"></i></button>
+                    <button id="nav-tab-mobile-map" onclick="switchTab('map')"><i class="fa-solid fa-map-marked-alt"></i></button>
+                    <button id="nav-tab-mobile-accommodation" onclick="switchTab('accommodation')"><i class="fa-solid fa-hotel"></i></button>
+                    <button id="nav-tab-mobile-checklist" onclick="switchTab('checklist')"><i class="fa-solid fa-list-check"></i></button>
+                    <button onclick="window.print()" class="text-nomad-teal"><i class="fa-solid fa-file-pdf"></i></button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Copy Toast Notification -->
+    <div id="toast" class="fixed top-20 right-4 bg-nomad-dark/95 text-white px-4 py-3 rounded-2xl shadow-xl transition-all duration-300 opacity-0 transform translate-y-2 pointer-events-none z-[100] text-xs flex items-center space-x-2">
+        <i class="fa-solid fa-circle-check text-nomad-gold text-sm"></i>
+        <span id="toast-text">복사되었습니다!</span>
+    </div>
+
+    <!-- Hero Section -->
+    <header class="bg-gradient-to-br from-nomad-dark via-emerald-950 to-nomad-teal text-white py-10 md:py-16">
+        <div class="max-w-6xl mx-auto px-6 text-center">
+            <div class="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] md:text-xs font-bold mb-4 uppercase tracking-[0.2em]">
+                중앙아시아 대륙종단 2026 • 7/17 ~ 7/31
+            </div>
+            <h1 class="text-2xl md:text-5xl font-extrabold mb-4 tracking-tight text-white">카자흐스탄 & 키르기스스탄</h1>
+            <p class="text-sm md:text-lg opacity-90 max-w-xl mx-auto font-light leading-relaxed">
+                스케치 지도의 경로와 소요시간, 세부 일정을 100% 동기화한 패밀리 스마트 가이드
+            </p>
+        </div>
+    </header>
+
+    <main class="flex-grow">
+        <!-- Tab 1: Home (Dashboard & Scenic Comparison) -->
+        <div id="home-tab" class="tab-panel active">
+            <!-- Live Dashboard Section -->
+            <section id="dashboard" class="py-6 max-w-6xl mx-auto px-4">
+                <h2 class="text-xl font-black text-nomad-dark mb-6 flex items-center">
+                    <span class="w-1.5 h-6 bg-nomad-teal mr-2.5 rounded-full"></span> 중앙아시아 실시간 상황판
+                </h2>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- Weather Display (Almaty, Karakol, Bishkek) -->
+                    <div class="lg:col-span-4 grid grid-cols-1 gap-3">
+                        <!-- Almaty Weather -->
+                        <div class="weather-gradient rounded-[1.8rem] p-4 text-white shadow-md flex flex-col justify-between h-28 relative overflow-hidden">
+                            <div class="flex justify-between items-start z-10">
+                                <div>
+                                    <span class="text-[8px] uppercase font-black tracking-wider bg-white/20 px-2 py-0.5 rounded-full">Kazakhstan</span>
+                                    <h3 class="font-extrabold text-xs mt-1">Almaty (알마티)</h3>
+                                </div>
+                                <div id="almaty-icon"><i class="fa-solid fa-cloud-sun text-xl"></i></div>
+                            </div>
+                            <div class="flex justify-between items-end z-10">
+                                <div>
+                                    <span class="text-2xl font-extrabold" id="almaty-temp">--°</span>
+                                    <span class="text-[10px] ml-1 font-medium" id="almaty-desc">Checking...</span>
+                                </div>
+                                <div class="text-[8px] opacity-80 flex space-x-2">
+                                    <span id="almaty-humidity"><i class="fa-solid fa-droplet text-[8px]"></i> 습도 --%</span>
+                                    <span id="almaty-wind"><i class="fa-solid fa-wind text-[8px]"></i> -- km/h</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Karakol Weather -->
+                        <div class="weather-gradient rounded-[1.8rem] p-4 text-white shadow-md flex flex-col justify-between h-28 relative overflow-hidden">
+                            <div class="flex justify-between items-start z-10">
+                                <div>
+                                    <span class="text-[8px] uppercase font-black tracking-wider bg-white/20 px-2 py-0.5 rounded-full">Kyrgyzstan (Highland)</span>
+                                    <h3 class="font-extrabold text-xs mt-1">Karakol (카라콜)</h3>
+                                </div>
+                                <div id="karakol-icon"><i class="fa-solid fa-mountain text-xl"></i></div>
+                            </div>
+                            <div class="flex justify-between items-end z-10">
+                                <div>
+                                    <span class="text-2xl font-extrabold" id="karakol-temp">--°</span>
+                                    <span class="text-[10px] ml-1 font-medium" id="karakol-desc">Checking...</span>
+                                </div>
+                                <div class="text-[8px] opacity-80 flex space-x-2">
+                                    <span id="karakol-humidity"><i class="fa-solid fa-droplet text-[8px]"></i> 습도 --%</span>
+                                    <span id="karakol-wind"><i class="fa-solid fa-wind text-[8px]"></i> -- km/h</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bishkek Weather -->
+                        <div class="weather-gradient rounded-[1.8rem] p-4 text-white shadow-md flex flex-col justify-between h-28 relative overflow-hidden">
+                            <div class="flex justify-between items-start z-10">
+                                <div>
+                                    <span class="text-[8px] uppercase font-black tracking-wider bg-white/20 px-2 py-0.5 rounded-full">Kyrgyzstan (Capital)</span>
+                                    <h3 class="font-extrabold text-xs mt-1">Bishkek (비슈케크)</h3>
+                                </div>
+                                <div id="bishkek-icon"><i class="fa-solid fa-sun text-xl"></i></div>
+                            </div>
+                            <div class="flex justify-between items-end z-10">
+                                <div>
+                                    <span class="text-2xl font-extrabold" id="bishkek-temp">--°</span>
+                                    <span class="text-[10px] ml-1 font-medium" id="bishkek-desc">Checking...</span>
+                                </div>
+                                <div class="text-[8px] opacity-80 flex space-x-2">
+                                    <span id="bishkek-humidity"><i class="fa-solid fa-droplet text-[8px]"></i> 습도 --%</span>
+                                    <span id="bishkek-wind"><i class="fa-solid fa-wind text-[8px]"></i> -- km/h</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Currency Exchange Calculator -->
+                    <div class="lg:col-span-4 bg-white rounded-[2rem] p-5 shadow-sm border border-slate-100 flex flex-col justify-between h-[23.5rem]">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold text-nomad-dark text-xs flex items-center">
+                                <i class="fa-solid fa-coins mr-2 text-nomad-gold text-base"></i> 실시간 통화 변환기
+                            </h3>
+                            <span class="text-[8px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold">LIVE Rate</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 my-2">
+                            <div class="bg-slate-50 p-2 rounded-2xl text-center">
+                                <span class="text-[8px] font-bold text-nomad-muted block mb-0.5">KZT (텐게)</span>
+                                <div class="flex justify-center items-baseline space-x-1">
+                                    <span class="text-base font-black text-nomad-dark" id="kzt-rate-val">---</span>
+                                    <span class="text-[8px] text-nomad-muted">원</span>
+                                </div>
+                            </div>
+                            <div class="bg-slate-50 p-2 rounded-2xl text-center">
+                                <span class="text-[8px] font-bold text-nomad-muted block mb-0.5">KGS (솜)</span>
+                                <div class="flex justify-center items-baseline space-x-1">
+                                    <span class="text-base font-black text-nomad-dark" id="kgs-rate-val">---</span>
+                                    <span class="text-[8px] text-nomad-muted">원</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <div class="flex items-center space-x-2 bg-slate-50 p-2 rounded-xl">
+                                <input type="number" id="base-calc-input" value="1000" class="w-16 bg-white border border-slate-200 rounded-lg p-1 text-center text-xs font-bold text-nomad-dark focus:outline-none">
+                                <select id="calc-currency-select" class="text-xs font-bold bg-white border border-slate-200 rounded-lg p-1 text-nomad-dark focus:outline-none flex-grow">
+                                    <option value="KZT">KZT (텐게)</option>
+                                    <option value="KGS">KGS (솜)</option>
+                                </select>
+                            </div>
+                            <div class="p-2.5 bg-nomad-teal/5 border border-nomad-teal/10 rounded-xl text-center">
+                                <span class="text-xs font-black text-nomad-teal" id="krw-calc-result">---</span>
+                                <span class="text-[9px] text-nomad-muted">KRW (대한민국 원)</span>
+                            </div>
+                        </div>
+                        <p class="text-[8px] text-nomad-muted italic text-center" id="last-update-time">Loading rates...</p>
+                    </div>
+
+                    <!-- Survival Phrasebook Widget -->
+                    <div class="lg:col-span-4 bg-white rounded-[2rem] p-5 shadow-sm border border-slate-100 flex flex-col justify-between h-[23.5rem]">
+                        <div class="flex justify-between items-center mb-1">
+                            <h3 class="font-bold text-nomad-dark text-xs flex items-center">
+                                <i class="fa-solid fa-comments mr-2 text-nomad-teal text-base"></i> 실크로드 에센셜 회화
+                            </h3>
+                            <span class="text-[8px] text-nomad-muted">터치 시 복사</span>
+                        </div>
+
+                        <!-- Phrasebook tabs -->
+                        <div class="flex space-x-1 bg-slate-100 p-1 rounded-xl">
+                            <button onclick="switchLanguage('kazakh')" id="btn-lang-kazakh" class="flex-1 py-1 rounded-lg text-[9px] font-bold transition-all bg-white text-nomad-dark shadow-sm">카자흐스탄</button>
+                            <button onclick="switchLanguage('kyrgyz')" id="btn-lang-kyrgyz" class="flex-1 py-1 rounded-lg text-[9px] font-bold transition-all text-nomad-muted">키르기스스탄</button>
+                        </div>
+
+                        <!-- Phrase List Container -->
+                        <div id="phrase-list-container" class="flex-grow overflow-y-auto space-y-1.5 pr-1 mt-2 no-scrollbar max-h-[14.5rem]">
+                            <!-- Rendered by JS -->
+                        </div>
+                    </div>
+                </div>
+
+            <!-- Weather date container (Invisible but required for script update) -->
+            <div id="weather-date" class="hidden"></div>
+            <!-- Forecast row below the cards -->
+            <div class="bg-white rounded-[2rem] p-5 shadow-sm border border-slate-100 mt-4">
+                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 px-2 flex items-center justify-between">
+                    <span>7일간의 기상 예보 흐름</span>
+                    <span id="forecast-city-label" class="text-nomad-teal font-extrabold normal-case bg-nomad-teal/5 px-2 py-0.5 rounded-lg text-[9px]"></span>
+                </h4>
+                <div id="forecast-container" class="flex space-x-4 overflow-x-auto no-scrollbar pb-2 px-1 text-center"></div>
+            </div>
+
+                    <!-- Phrase Book Area -->
+                    <div class="lg:col-span-3 bg-white rounded-[2rem] p-6 shadow-sm border border-slate-50 flex flex-col justify-between">
+                        <div>
+                            
+                            <!-- Accordion UI for Contacts and offline map -->
+                            <div class="space-y-2">
+                                <button onclick="toggleGuideContent('emergency-contact')" class="w-full text-left p-3.5 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-100 flex justify-between items-center transition-all">
+                                    <span class="text-xs font-black text-nomad-dark"><i class="fa-solid fa-phone-volume text-rose-500 mr-2"></i> 비상대사관 연락처</span>
+                                    <i class="fa-solid fa-chevron-down text-[10px] text-nomad-muted" id="icon-emergency-contact"></i>
+                                </button>
+                                <button onclick="toggleGuideContent('offline-map')" class="w-full text-left p-3.5 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-100 flex justify-between items-center transition-all">
+                                    <span class="text-xs font-black text-nomad-dark"><i class="fa-solid fa-map-location-dot text-nomad-teal mr-2"></i> 오프라인 맵 팁</span>
+                                    <i class="fa-solid fa-chevron-down text-[10px] text-nomad-muted" id="icon-offline-map"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="guide-content-emergency-contact" class="hidden space-y-2 text-[10px] leading-relaxed text-nomad-muted max-h-56 overflow-y-auto no-scrollbar">
+                            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                <span class="text-[9px] font-black text-nomad-teal block mb-1">🇰🇿 카자흐스탄 주대한민국 대사관</span>
+                                <div class="flex justify-between items-center text-xs font-black">
+                                    <span>대표 연락처</span>
+                                    <a href="tel:+77172701212" class="text-nomad-teal hover:underline"><i class="fa-solid fa-phone mr-1"></i> +7 (717) 270-1212</a>
+                                </div>
+                                <div class="flex justify-between items-center text-xs font-black mt-1">
+                                    <span>긴급 당직 (24H)</span>
+                                    <a href="tel:+77017658256" class="text-rose-600 hover:underline"><i class="fa-solid fa-phone mr-1"></i> +7 (701) 765-8256</a>
+                                </div>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                <span class="text-[9px] font-black text-nomad-teal block mb-1">🇲🇳 키르기스스탄 주대한민국 대사관</span>
+                                <div class="flex justify-between items-center text-xs font-black">
+                                    <span>대표 연락처</span>
+                                    <a href="tel:+996312300243" class="text-nomad-teal hover:underline"><i class="fa-solid fa-phone mr-1"></i> +996 (312) 300-243</a>
+                                </div>
+                                <div class="flex justify-between items-center text-xs font-black mt-1">
+                                    <span>긴급 당직 (24H)</span>
+                                    <a href="tel:+996500030024" class="text-rose-600 hover:underline"><i class="fa-solid fa-phone mr-1"></i> +996 (500) 030-024</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="guide-content-offline-map" class="hidden space-y-2 text-[10px] leading-relaxed text-nomad-muted max-h-56 overflow-y-auto no-scrollbar">
+                            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                <span class="text-[9px] font-black text-nomad-teal block mb-1">📍 Maps.me (맵스미) - 필수 다운로드</span>
+                                <p class="text-nomad-dark font-medium">데이터가 완전히 차단되는 산악 지대(송쿨, 알틴아라산) 하이킹 시 필수입니다. 출발 전 한국에서 반드시 카자흐스탄/키르기스스탄 전체 지도를 오프라인 다운로드 해두세요.</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                <span class="text-[9px] font-black text-nomad-teal block mb-1">🚖 Yandex Go (얀덱스) 택시 요령</span>
+                                <p class="text-nomad-dark font-medium">알마티, 비슈케크, 카라콜 시내 이동 시 미터기 흥정 없이 어플로 호출 가능합니다. 인터넷 음영 지역 진입 전에 앱 카드 등록 및 활성화 상태를 점검하세요.</p>
+                            </div>
+                        </div>
+                    </div>
+                            </button>
+                            <button onclick="updateRadarChart(4)" class="text-left p-4 bg-white rounded-2xl shadow-sm border-2 border-transparent hover:border-nomad-teal transition-all flex justify-between items-center group">
+                                <span class="font-bold text-xs text-nomad-dark group-hover:text-nomad-teal">Jyrgalan Valley (지르갈란 계곡) - 청정 야생화 트레킹</span>
+                                <i class="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-nomad-teal"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center">
+                        <div class="chart-container">
+                            <canvas id="scenicChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        </div> <!-- /home-tab -->
+
+        <!-- Tab 2: Itinerary (상세 일정) -->
+        <div id="itinerary-tab" class="tab-panel">
+            <section id="itinerary-section" class="py-10 max-w-6xl mx-auto px-4">
+                <div class="flex flex-col md:flex-row md:items-end justify-between mb-6">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-nomad-dark flex items-center">
+                            <span class="w-1.5 h-6 bg-nomad-teal mr-2.5 rounded-full"></span> 상세 일정 및 일일 체크리스트
+                        </h2>
+                        <p class="text-xs text-nomad-muted mt-1">원하시는 방문 도시나 지역을 선택하면 해당하는 세부 일정이 나타납니다.</p>
+                    </div>
+                    <!-- City Filter for Itinerary -->
+                    <div class="flex overflow-x-auto space-x-1.5 p-1 bg-white border border-slate-200 rounded-2xl shadow-sm mt-4 md:mt-0 no-scrollbar max-w-full md:max-w-xl">
+                        <button onclick="filterItinerary('all')" id="btn-itinerary-all" class="px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all bg-nomad-terracotta text-white shadow-sm whitespace-nowrap">전체</button>
+                        <button onclick="filterItinerary('almaty')" id="btn-itinerary-almaty" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted whitespace-nowrap">알마티</button>
+                        <button onclick="filterItinerary('charyn_kolsai')" id="btn-itinerary-charyn_kolsai" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted whitespace-nowrap">차른/콜사이</button>
+                        <button onclick="filterItinerary('jyrgalan')" id="btn-itinerary-jyrgalan" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted whitespace-nowrap">지르갈란</button>
+                        <button onclick="filterItinerary('karakol')" id="btn-itinerary-karakol" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted whitespace-nowrap">카라콜/알틴아라산</button>
+                        <button onclick="filterItinerary('issyk_kochkor')" id="btn-itinerary-issyk_kochkor" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted whitespace-nowrap">이식쿨/코치코르</button>
+                        <button onclick="filterItinerary('songkul')" id="btn-itinerary-songkul" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted whitespace-nowrap">송쿨</button>
+                        <button onclick="filterItinerary('bishkek')" id="btn-itinerary-bishkek" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted whitespace-nowrap">비슈케크</button>
+                    </div>
+                </div>
+                <!-- Horizontal scrollable Day Tabs -->
+                <div class="flex overflow-x-auto space-x-2 mb-8 pb-3 no-scrollbar -mx-4 px-4" id="day-tabs"></div>
+                <!-- Content Area -->
+                <div id="day-content" class="bg-white rounded-[2.5rem] shadow-sm p-6 md:p-10 border border-slate-50 transition-all duration-300 min-h-[500px]"></div>
+            </section>
+        </div> <!-- /itinerary-tab -->
+
+        <!-- Tab 3: Map (여행 지도) -->
+        <div id="map-tab" class="tab-panel">
+            <section id="map-section" class="py-6 bg-slate-50">
+                <div class="max-w-6xl mx-auto px-4">
+                    <div class="mb-4">
+                        <h2 class="text-xl font-bold text-nomad-dark flex items-center">
+                            <span class="w-1 h-5 bg-brisbane-coral mr-2 rounded-full"></span> 중앙아시아 종단 루트 지도 (English Landmarks)
+                        </h2>
+                        <p class="text-[11px] text-nomad-muted mt-1">업로드하신 경로 스케치 기반으로 구성된 실제 국경 통과 원형 동선입니다.</p>
+                    </div>
+                    <div id="map" class="shadow-xl border-4 border-white"></div>
+                </div>
+            </section>
+        </div> <!-- /map-tab -->
+
+        <!-- Tab 4: Accommodation (숙소 정보) -->
+        <div id="accommodation-tab" class="tab-panel">
+            <section id="accommodation-section" class="py-10 max-w-6xl mx-auto px-4">
+                <div class="mb-8">
+                    <h2 class="text-xl font-extrabold text-nomad-dark flex items-center">
+                        <span class="w-1.5 h-6 bg-nomad-terracotta mr-2.5 rounded-full"></span> 숙소 예약 정보 & 택시 안내
+                    </h2>
+                    <p class="text-xs text-nomad-muted mt-1">카드/지도에서 보기 버튼으로 위치를 확인하고, 현지어 주소를 복사하여 택시 기사에게 보여주세요.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8" id="lodging-container"></div>
+            </section>
+        </div> <!-- /accommodation-tab -->
+
+        <!-- Tab 5: Checklist (준비물) -->
+        <div id="checklist-tab" class="tab-panel">
+            <section id="checklist-section" class="py-12 bg-white border-t border-gray-100">
+                <div class="max-w-6xl mx-auto px-4">
+                    <div class="mb-10 text-center">
+                        <h2 class="text-2xl font-black text-nomad-dark mb-2">중앙아시아 마스터 체크리스트</h2>
+                        <p class="text-sm text-nomad-muted font-light">험난한 4WD 오프로드 및 고산지대 숙박을 대비한 특수 준비물 리스트입니다.</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="master-checklist-container"></div>
+                </div>
+            </section>
+        </div> <!-- /checklist-tab -->
+
+    </main>
+
+    <!-- Print-only container -->
+    <div id="print-section" class="p-6"></div>
+
+    <!-- Footer -->
+    <footer class="bg-nomad-dark text-white py-12 text-center">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-center space-x-8 text-xl opacity-60 mb-6">
+                <i class="fa-solid fa-mountain-sun"></i>
+                <i class="fa-solid fa-route"></i>
+                <i class="fa-solid fa-tent"></i>
+            </div>
+            <p class="text-[10px] opacity-40 uppercase tracking-[0.25em] mb-1">Central Asia Adventure 2026</p>
+            <p class="text-[9px] opacity-20">Live weather by OpenWeatherMap • Currency rates by ExchangeRate-API • Maps by Leaflet</p>
+        </div>
+    </footer>
+
+    <script>
+        const weatherApiKey = "0127bef44dbb798277979e0b6c680a3f";
+        let currentKztRate = 3.0; 
+        let currentKgsRate = 16.0; 
+        let currentUsdRate = 1350.0;
+        let mapInstance;
+
+        // Custom clipboard copy with document.execCommand fallback for iframe safety
+        function copyText(text, label) {
+            const tempInput = document.createElement("textarea");
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            try {
+                document.execCommand("copy");
+                showToast(`"${label}" 복사 완료!`);
+            } catch (err) {
+                showToast("복사 실패했습니다.");
+            }
+            document.body.removeChild(tempInput);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-text').innerText = message;
+            toast.classList.remove('opacity-0', 'translate-y-2');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'translate-y-2');
+            }, 2500);
+        }
+
+        async function fetchWithRetry(url, options = {}, retries = 5, backoff = 1000) {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) throw new Error('API Error');
+                return await response.json();
+            } catch (err) {
+                if (retries > 0) {
+                    await new Promise(r => setTimeout(r, backoff));
+                    return fetchWithRetry(url, options, retries - 1, backoff * 2);
+                }
+                throw err;
+            }
+        }
+
+        // Phrasebook Data Structure
+        const phrasebook = {
+            kazakh: [
+                { kor: "안녕하세요", original: "Сәлеметсіз бе!", pron: "살레메트시즈베" },
+                { kor: "감사합니다", original: "Рахмет!", pron: "라흐멧" },
+                { kor: "예 / 아니요", original: "Иә / Жоқ", pron: "이예 / 조크" },
+                { kor: "얼마인가요?", original: "Бұл қанша тұрады?", pron: "불 칸샤 투라디?" },
+                { kor: "미안합니다 / 실례합니다", original: "Кешіріңіз", pron: "케시리니즈" },
+                { kor: "정말 맛있어요!", original: "Өте дәмді!", pron: "오떼 담디!" },
+                { kor: "깎아주실 수 있나요?", original: "Арзандатуға бола ма?", pron: "아르잔다투가 볼라 마?" },
+                { kor: "도와주세요!", original: "Көмектесіңізші!", pron: "코멕테시니즈시!" }
+            ],
+            kyrgyz: [
+                { kor: "안녕하세요", original: "Саламатсызбы!", pron: "살라맛스즈비" },
+                { kor: "감사합니다", original: "Рахмат!", pron: "라흐맛" },
+                { kor: "예 / 아니요", original: "Ооба / Жок", pron: "오오바 / 조크" },
+                { kor: "얼마인가요?", original: "Бул канча турат?", pron: "불 칸차 투랏?" },
+                { kor: "미안합니다 / 실례합니다", original: "Кечириңиз", pron: "케치리니즈" },
+                { kor: "정말 맛있어요!", original: "Абдан даамдуу!", pron: "압단 담두!" },
+                { kor: "비싸요! (정겨운 깎기용)", original: "Кымбат экен!", pron: "큼밧 에켄!" },
+                { kor: "도와주세요!", original: "Жардам бериңизчи!", pron: "자르담 베리니즈치!" }
+            ]
+        };
+
+        
+        // 9 Lodging 예약 확인서 상세 정보 (알마티 첫 숙소 추가)
+        const lodgingData = [
+            {
+                id: "abay-77",
+                name: "Abay Avenue 77 Apartment",
+                location: "Almaty (알마티 시내)",
+                period: "7/17 (금) ~ 7/19 (일) [2박]",
+                addressEn: "Abay Avenue 77, Almaty, 050000, Kazakhstan",
+                addressLocal: "проспект Абая 77, Алматы, Казахстан",
+                phone: "+7 701 765 8256 (현지 연락 대행 / 긴급 연락용)",
+                gps: "N 043° 14.498, E 076° 55.769",
+                lat: 43.241629,
+                lng: 76.929475,
+                price: "₩166,440 (2박 총액 / 아고다 카드 선결제 완료)",
+                payment: "결제 완료 (아파트 예약)",
+                room: "아파트 전체 (성인 3명, 식사 미포함)",
+                details: "알마티 중심가 아바이 대로변 숙소. Yandex Go 앱에서 목적지 검색 시 'проспект Абая 77' 입력하여 호출 편리. 무료 Wi-Fi 제공.",
+                bookingFile: "temp_1784120800000.txt",
+                cashOnly: false
+            },
+            {
+                id: "kausar",
+                name: "Kausar house",
+                location: "Qarabulak (차른캐년/사티 마을 인근)",
+                period: "7/19 (일) ~ 7/21 (화) [2박]",
+                addressEn: "Bakutubek 21, Qarabulak (near Saty), 041411, Kazakhstan",
+                addressLocal: "ул. Бакутубек 21, с. Карабулак, Алматинская область, Казахстан",
+                phone: "+7 705 525 4600",
+                gps: "N 043° 4.568, E 78° 32.203",
+                lat: 43.076133,
+                lng: 78.536717,
+                price: "₩144,999 (도시세 포함 최종 결제금액 / KZT 46,924.14)",
+                payment: "현지 지불 (현금 결제만 가능)",
+                room: "트리플룸 1개 (성인 3명, 조식 포함)",
+                details: "무료 Wi-Fi, 무료 주차. Booking.com 예약 (일정 시기에 선결제 가능성 있음). 사막 기후 및 위생용품 개인 지참 필수.",
+                bookingFile: "temp_1784120836187.241578689.txt",
+                cashOnly: true
+            },
+            {
+                id: "baitor",
+                name: "Baitor Guesthouse",
+                location: "Dzhergalan (지르갈란)",
+                period: "7/21 (화) ~ 7/22 (수) [1박]",
+                addressEn: "Asanbaev Street 9/2, Dzhergalan (Jyrgalan), 721806, Kyrgyzstan",
+                addressLocal: "ул. Асанбаева 9/2, с. Жыргалан, Иссык-Кульская область, Кыргызстан",
+                phone: "+996 552 466 453",
+                gps: "N 042° 36.199, E 79° 0.304",
+                lat: 42.603317,
+                lng: 79.005067,
+                price: "₩86,170 (US$56.70)",
+                payment: "현지 지불 (현금 결제만 가능)",
+                room: "트리플룸 1개 (성인 3명, 조식 포함)",
+                details: "★인터넷(Wi-Fi) 접속 불가. 무료 주차. Booking.com 예약. 고산지대이므로 따뜻한 아웃도어 의류 사전 준비 필수.",
+                bookingFile: "temp_1784120788798.2076444330.txt",
+                cashOnly: true
+            },
+            {
+                id: "ali-1",
+                name: "Ali guest house (1차 투숙)",
+                location: "Karakol (카라콜)",
+                period: "7/22 (수) ~ 7/23 (목) [1박]",
+                addressEn: "38 Kharkovskaya Street, Karakol, Kyrgyzstan",
+                addressLocal: "ул. Харьковская 38, Каракол, Иссык-Кульская область, Кыргызстан",
+                phone: "+996 702 473 263 (아고다 고객센터 대행 가능)",
+                gps: "N 042° 29.281, E 078° 24.234 (Karakol City)",
+                lat: 42.483,
+                lng: 78.395,
+                price: "USD 24.41",
+                payment: "현지 직접 결제 (아고다 예약 / 숙소 직접 결제)",
+                room: "트리플룸/패밀리룸 상당 (suk yeong jeong 이름 예약)",
+                details: "무료 Wi-Fi, 무료 주차. 아고다 예약번호: 1737450750 (Booking ID: 6595550876). 온천욕 등 트레킹 후 숙소 복귀용.",
+                bookingFile: "temp_1784120825680.-111756831.txt",
+                cashOnly: true
+            },
+            {
+                id: "ali-2",
+                name: "Ali guest house (2차 투숙)",
+                location: "Karakol (카라콜)",
+                period: "7/24 (금) ~ 7/25 (토) [1박]",
+                addressEn: "38 Kharkovskaya Street, Karakol, Kyrgyzstan",
+                addressLocal: "ул. Харьковская 38, Каракол, Иссык-Кульская область, Кыргызстан",
+                phone: "+996 702 473 263 (아고다 고객센터 대행 가능)",
+                gps: "N 042° 29.281, E 078° 24.234 (Karakol City)",
+                lat: 42.483,
+                lng: 78.395,
+                price: "USD 24.41",
+                payment: "현지 직접 결제 (아고다 예약 / 숙소 직접 결제)",
+                room: "트리플룸/패밀리룸 상당 (suk yeong jeong 이름 예약)",
+                details: "무료 Wi-Fi, 무료 주차. 아고다 예약번호: 1737451661 (Booking ID: 5231122699). 알틴아라산 하산 후 재투숙.",
+                bookingFile: "temp_1784120830970.1873315055.txt",
+                cashOnly: true
+            },
+            {
+                id: "ailuu",
+                name: "Guest house and Yurt camp \"Ailuu\"",
+                location: "Tong (이식쿨 남해안)",
+                period: "7/25 (토) ~ 7/26 (일) [1박]",
+                addressEn: "Zorka Beach, Bulun Area, Tong Village, Issyk-Kul Region, Kyrgyzstan",
+                addressLocal: "Пляж Зорька, Участок Булун, с. Тон (Тонг), Иссык-Кульская область, Кыргызстан",
+                phone: "+996 702 473 263",
+                gps: "N 042° 10.476, E 77° 1.675",
+                lat: 42.1746,
+                lng: 77.027917,
+                price: "₩84,666 (US$55.71)",
+                payment: "현지 지불 (현금 결제만 가능)",
+                room: "트윈룸-욕실 1개 (성인 2명) & 트윈룸 1개 (성인 1명) [총 2개 객실]",
+                details: "식사 미포함. 무료 Wi-Fi, 무료 주차. 이식쿨 호수 바로 앞 전망 좋음. 모래사장 산책용 샌들 지참 권장.",
+                bookingFile: "temp_1784120809924.1524751607.txt",
+                cashOnly: true
+            },
+            {
+                id: "rahat",
+                name: "Yurtcamp Rahat & Horse Trekking",
+                location: "Song-Kul (송쿨 호수)",
+                period: "7/26 (일) ~ 7/27 (월) [1박]",
+                addressEn: "Yurt Camp Rahat, Tulpar Tash Area, Song-Kul Lake, Kyrgyzstan",
+                addressLocal: "юрточный лагерь Рахат, Тулпар-Таш, озеро Сон-Куль, Нарынская область, Кыргызстан",
+                phone: "+996 709 499 983",
+                gps: "N 041° 52.078, E 75° 0.669",
+                lat: 41.867967,
+                lng: 75.01115,
+                price: "₩107,604 (도시세 포함 예상금액 / USD 70.80)",
+                payment: "현지 지불 (현금 결제만 가능)",
+                room: "3인용 유르트 1동 (성인 3명, 조식 포함)",
+                details: "★인터넷(Wi-Fi) 접속 불가. 무료 주차. Booking.com 예약. 고지대(3,016m) 야간 혹한 대비 경량패딩 및 핫팩 필수.",
+                bookingFile: "temp_1784120814674.1466764674.txt",
+                cashOnly: true
+            },
+            {
+                id: "bishkek-nest",
+                name: "The Bishkek Nest",
+                location: "Bishkek (비슈케크)",
+                period: "7/27 (월) ~ 7/29 (수) [2박]",
+                addressEn: "Toktonaliev Street 26, Bishkek, 720055, Kyrgyzstan",
+                addressLocal: "ул. Токтоналиева 26, Бишкек, 720055, Кыргызстан",
+                phone: "+996 556 102 772",
+                gps: "N 042° 50.824, E 74° 35.557",
+                lat: 42.847067,
+                lng: 74.592617,
+                price: "₩109,423 (US$72.00)",
+                payment: "현지 지불 (현금 결제만 가능)",
+                room: "아파트 전체 (성인 3명, 식사 미포함)",
+                details: "무료 Wi-Fi, 주차 불가. Booking.com 예약. ★현금 지불 및 보증금 USD 10 (또는 현지화 상당) 현물 지참 필요.",
+                bookingFile: "temp_1784120819939.-1019915310.txt",
+                cashOnly: true
+            },
+            {
+                id: "viator",
+                name: "Hostel Viator",
+                location: "Almaty (알마티 - 귀국 전)",
+                period: "7/29 (수) ~ 7/31 (금) [2박]",
+                addressEn: "91 Sapargali Begalin Street, Almaty, 050010, Kazakhstan",
+                addressLocal: "ул. Сапаргали Бегалина 91, Алматы, 050010, Казахстан",
+                phone: "+7 707 370 1983",
+                gps: "N 043° 14.824, E 76° 57.913",
+                lat: 43.247067,
+                lng: 76.965217,
+                price: "₩105,019 (KZT 33,000)",
+                payment: "현지 지불 (현금 결제만 가능)",
+                room: "트리플룸 1개 (성인 3명, 식사 미포함)",
+                details: "무료 Wi-Fi, 인근 무료 주차 가능. Booking.com 예약. 도보 국경(코르다이) 통과 후 알마티 시내 복귀 숙소.",
+                bookingFile: "예약확인서_5485935611.PDF",
+                cashOnly: true
+            }
+        ];
+    
+        const itineraryData = [
+            {
+                day: 1, date: "7/17 (금)", country: "kazakh", city: "almaty", title: "알마티 입성 및 휴식", icon: "fa-plane-arrival", color: "text-blue-500",
+                route: "ALA 공항 ➔ 알마티 시내 (Abay Avenue 77)", travelTime: "차량 약 30분",
+                accommodation: "Abay Avenue 77 (Almaty)", expense: "83,220원 (호텔)",
+                schedule: [
+                    { time: "오후", activity: "알마티 국제공항(ALA) 도착 및 입국 수속", icon: "fa-passport" },
+                    { time: "이동", activity: "ALA 공항에서 전용 차량 탑승하여 알마티 시내 숙소로 이동", icon: "fa-car" },
+                    { time: "체크인", activity: "숙소(Abay Avenue 77) 체크인 및 휴식", icon: "fa-hotel", highlight: true }
+                ],
+                tasks: ["공항 내 현지 유심 구매 및 정상 작동 확인", "기본 텐게(KZT) 현금 일부 현금인출기(ATM) 인출", "Yandex Go 모바일 호출 앱 정상 작동 테스팅"],
+                essentialGear: ["여권 원본", "현지 유심", "Yandex Go 앱"]
+            },
+            {
+                day: 2, date: "7/18 (토)", country: "kazakh", city: "almaty", title: "메데우 & 침불락 트레킹", icon: "fa-snowflake", color: "text-sky-500",
+                route: "알마티 (Abay Avenue 77) ➔ Medeu ➔ Shymbulak ➔ 알마티", travelTime: "곤돌라 왕복 약 30~40분",
+                accommodation: "Abay Avenue 77 (Almaty)", expense: "경비 약 1만원 (티켓 관련 등), 숙소비 83,220원",
+                schedule: [
+                    { time: "오전", activity: "Medeu(메데우) 고산 실외 링크 조망 및 주변 산책", icon: "fa-icicles" },
+                    { time: "이동", activity: "Medeu에서 곤돌라 케이블카 탑승하여 침불락 최상단 전망대로 이동", icon: "fa-cable-car" },
+                    { time: "트레킹", activity: "해발 3,200m 침불락(Shymbulak) 정상 전망대 및 설산 트레킹 진행", icon: "fa-mountain-sun", highlight: true },
+                    { time: "복귀", activity: "알마티 도심 복귀 및 휴식", icon: "fa-hotel" }
+                ],
+                tasks: ["★침불락 최상단 왕복 티켓 구입하기", "침불락 정상은 기온이 매우 낮으므로 보온용 바람막이/경량패딩 지참", "오후 개인 시간 활용 알마티 시내 탐색"],
+                essentialGear: ["침불락 티켓", "바람막이/경량패딩", "등산화"]
+            },
+            {
+                day: 3, date: "7/19 (일)", country: "kazakh", city: "charyn_kolsai", title: "웅장한 차른 협곡과 옐로우캐년 트레킹", icon: "fa-mountain", color: "text-orange-500",
+                route: "알마티 ➔ 차른캐년 ➔ 림트레킹 ➔ 옐로우캐년", travelTime: "차량 약 3시간",
+                accommodation: "Kausar house (Qarabulak)", expense: "KZT 46,924.14 (2박 총액, 현금)", remark: "조식 포함, 무료 Wi-Fi, 무료 주차, 현금 지불",
+                schedule: [
+                    { time: "08:00", activity: "알마티 출발 ➔ Charyn Canyon(차른캐년)으로 이동 (차량 3시간 소요)", icon: "fa-car" },
+                    { time: "림트레킹", activity: "협곡의 능선을 따라 걷는 환상적인 림 트레킹(Rim Trekking) 진행", icon: "fa-person-hiking", highlight: true },
+                    { time: "옐로우캐년", activity: "이색적인 노란 사암의 옐로우 캐년 탐방", icon: "fa-compass" },
+                    { time: "저녁", activity: "차른캐년 숙소 체크인 및 별빛 밤 감상", icon: "fa-campground" }
+                ],
+                tasks: ["Kausar house 현지 현금 지불 준비 (2박 총 KZT 46,924.14)", "사막 기후와 흙먼지 차단용 버프/손수건 구비", "림 트레킹 진행 시 미끄러짐 방지를 위해 아웃도어용 트레킹화 착용", "차른캐년 숙소 대비 개인 세면 타월 및 위생용품 지참"],
+                essentialGear: ["버프/손수건", "등산화", "개인 세면 타월"]
+            },
+            {
+                day: 4, date: "7/20 (월)", country: "kazakh", city: "charyn_kolsai", title: "블랙캐년과 에메랄드 호수 탐방", icon: "fa-water", color: "text-nomad-teal",
+                route: "차른캐년 ➔ 블랙캐년 ➔ 카인디 호수 ➔ 콜사이 호수", travelTime: "차량 및 4WD 이동",
+                accommodation: "Kausar house (Qarabulak)", expense: "Kausar house (2박째)", remark: "조식 포함, 무료 Wi-Fi, 무료 주차",
+                schedule: [
+                    { time: "오전", activity: "차른캐년 출발 ➔ 깊은 계곡의 블랙캐년(Black Canyon) 비경 감상", icon: "fa-eye" },
+                    { time: "이동", activity: "Kaindy(카인디) 호수로 이동하여 특수 4WD(우아즈) 차량 탑승", icon: "fa-truck-monster" },
+                    { time: "카인디", activity: "침엽수들이 수면 위로 솟아 있는 신비로운 카인디 호수 투어 및 승마/산책", icon: "fa-water", highlight: true },
+                    { time: "콜사이", activity: "에메랄드빛 콜사이(Kolsai) 호수로 이동하여 체크인 및 호숫가 휴식", icon: "fa-hotel" }
+                ],
+                tasks: ["오프로드 주행 구간이 길어 멀미가 심한 경우 멀미약 복용", "카인디 호수 산책/승마 시 긴바지 착용 권장", "콜사이 숙소 투숙 시 수변의 차가운 저녁 바람 대비"],
+                essentialGear: ["멀미약", "등산화", "방한 의류"]
+            },
+            {
+                day: 5, date: "7/21 (화)", country: "kyrgyz", city: "jyrgalan", title: "키르기스 국경 통과 및 야생화 평원 지르갈란", icon: "fa-passport", color: "text-indigo-500",
+                route: "콜사이 ➔ 카르카라 국경 ➔ 지르갈란", travelTime: "국경 대기 포함 차량 약 4~5시간",
+                accommodation: "Baitor Guesthouse (지르갈란)", expense: "US$ 56.70 (현금)", remark: "조식 포함, 인터넷(Wi-Fi) 불가, 현금 지불만 가능",
+                schedule: [
+                    { time: "이동", activity: "콜사이 출발 ➔ 카자흐스탄-키르기스스탄 국경 카르카라(Karkara)로 이동", icon: "fa-car" },
+                    { time: "국경통과", activity: "Karkara 국경 검문소 도착하여 출입국 심사 및 세관 통과", icon: "fa-shield-halved", highlight: true },
+                    { time: "지르갈란", activity: "국경 통과 후 야생화와 광활한 초원의 지르갈란(Jyrgalan) 이동 및 숙소 체크인", icon: "fa-campground" }
+                ],
+                tasks: ["Baitor Guesthouse 현지 지불 준비 (US$ 56.70)", "인터넷이 완전히 불가하므로 오프라인 상태 사전 대비", "★여권 원본 분실 주의! 수시로 소지 상태 재확인", "키르기스스탄 솜(KGS) 환전 준비", "지르갈란 도착 후 따뜻한 아웃도어 의류 준비"],
+                essentialGear: ["여권 원본", "키르기스 솜(KGS)", "방한 의류"]
+            },
+            {
+                day: 6, date: "7/22 (수)", country: "kyrgyz", city: "jyrgalan", title: "지르갈란 다리 트레킹 및 카라콜 이동", icon: "fa-person-hiking", color: "text-emerald-500",
+                route: "지르갈란 ➔ 카라콜", travelTime: "지르갈란 ➔ 카라콜 (차량 약 1.5~2시간)",
+                accommodation: "Ali guest house (카라콜)", expense: "USD 24.41 (현지 지불)", remark: "무료 Wi-Fi, 무료 주차, 아고다 예약번호 1737450750 (숙소 직접 결제)",
+                schedule: [
+                    { time: "트레킹", activity: "지르갈란(Jyrgalan) 1~2브릿지 트레킹 코스 진행", icon: "fa-person-hiking", highlight: true },
+                    { time: "이동", activity: "트레킹 완료 후 키르기스스탄 역사 도시 카라콜(Karakol)로 이동", icon: "fa-car" },
+                    { time: "휴식", activity: "카라콜 시내 숙소 체크인 및 한식/현지식 저녁 식사 후 휴식", icon: "fa-hotel" }
+                ],
+                tasks: ["Ali guest house 현지 지불 준비 (USD 24.41)", "트레킹 중 관절 보호용 보호대 및 트레킹 폴 준비", "우천 대비용 가벼운 3단 접이식 우산이나 판초 우의 지참", "지르갈란의 신선한 유제품/마을 분위기 감상"],
+                essentialGear: ["무릎보호대", "트레킹 폴", "우산/우의"]
+            },
+            {
+                day: 7, date: "7/23 (목)", country: "kyrgyz", city: "karakol", title: "천상의 유황 노천 온천 알틴아라산", icon: "fa-hot-tub-person", color: "text-teal-600",
+                route: "카라콜 ➔ 알틴아라산", travelTime: "4WD 차량 약 1시간 30분",
+                accommodation: "알틴아라산 산장 (Altyn-Arashan Lodge)", remark: "무릎보호대 필수, 전력/온수 한정적, 별도 예약 확인서 없음 (현지 진행)",
+                schedule: [
+                    { time: "이동", activity: "카라콜에서 특수 4WD 군용 트럭 탑승하여 알틴아라산 계곡 진입", icon: "fa-truck-monster" },
+                    { time: "트레킹", activity: "알프스 느낌의 침엽수림 속 알틴아라산 트레킹 및 산책", icon: "fa-person-hiking" },
+                    { time: "온천욕", activity: "야외 노천 온천 및 목조 온천탕에서 천연 유황 온천욕 진행", icon: "fa-hot-tub-person", highlight: true },
+                    { time: "산장숙박", activity: "알틴아라산 산장에서의 별빛 가득한 고산 밤 투숙", icon: "fa-home" }
+                ],
+                tasks: ["★알틴아라산 급경사 및 하이킹 대비 무릎보호대 착용 필수", "온천욕을 위한 개인 수영 의류 및 비치 타월 지참", "전력 및 온수가 한정적일 수 있으므로 보조배터리 및 손전등 지참"],
+                essentialGear: ["무릎보호대", "수영복", "개인 수건", "보조배터리", "헤드랜턴"]
+            },
+            {
+                day: 8, date: "7/24 (금)", country: "kyrgyz", city: "karakol", title: "알틴아라산 하산 및 카라콜 투어", icon: "fa-mountain-sun", color: "text-blue-600",
+                route: "알틴아라산 ➔ 카라콜", travelTime: "4WD 차량 약 1시간 30분",
+                accommodation: "Ali guest house (카라콜)", expense: "USD 24.41 (현지 지불)", remark: "무료 Wi-Fi, 무료 주차, 아고다 예약번호 1737451661 (숙소 직접 결제)",
+                schedule: [
+                    { time: "하산", activity: "알틴아라산 산장 출발 ➔ 4WD 차량으로 카라콜 시티 복귀", icon: "fa-car" },
+                    { time: "시내투어", activity: "못을 사용하지 않고 지은 목조 러시아 정교회 교회 및 둔간 이슬람 사원 투어", icon: "fa-place-of-worship", highlight: true },
+                    { time: "휴식", activity: "카라콜 시내 쇼핑 및 현지 레스토랑 저녁식사 후 숙박", icon: "fa-hotel" }
+                ],
+                tasks: ["Ali guest house 현지 지불 준비 (USD 24.41)", "4WD 하산 시 요동이 심하므로 멀미약 필요한 경우 사전 복용", "종교 시설(교회/사원) 방문 시 단정한 복장 착용", "카라콜 로컬 시장에서 신선한 꿀/과일 쇼핑"],
+                essentialGear: ["멀미약", "단정한 복장 (사원 방문용)", "로컬 쇼핑 지갑"]
+            },
+            {
+                day: 9, date: "7/25 (토)", country: "kyrgyz", city: "issyk_kochkor", title: "제티오구스 조망과 붉은 미로 스카즈카", icon: "fa-heart-crack", color: "text-nomad-terracotta",
+                route: "카라콜 ➔ 제티오구스 ➔ 스카즈카 ➔ 이식쿨 남해안", travelTime: "제티오구스 (약 40분), 스카즈카 (약 1시간 30분), 이식쿨 (약 40분)",
+                accommodation: "Guest house and Yurt camp 'Ailuu' (이식쿨 남안)", expense: "US$ 55.71 (현금)", remark: "식사 미포함, 무료 Wi-Fi, 무료 주차, 트윈룸 2개 예약(1개 욕실 포함), 현금 결제만 가능",
+                schedule: [
+                    { time: "제티오구스", activity: "카라콜 출발 ➔ 일곱 황소 절벽(Jeti-Oguz) 및 쪼개진 심장 바위 파노라마 조망", icon: "fa-mountain" },
+                    { time: "스카즈카", activity: "붉은 진흙 미로 언덕 스카즈카(Skazka) 캐년 1시간 걷기 트레킹", icon: "fa-person-hiking", highlight: true },
+                    { time: "유르트캠프", activity: "거대 이식쿨 호수 남안의 유목민 전통 텐트 '유르트 캠프' 배정 및 숙박", icon: "fa-campground" }
+                ],
+                tasks: ["Ailuu Yurt camp 현지 지불 준비 (US$ 55.71)", "★스카즈카 협곡 내 그늘이 없으므로 식수/생수 꼭 챙기기", "★비가 오면 진흙이 미끄러워 위험하므로 우천 시 트레킹 취소 또는 대체 경로 논의", "이식쿨 호숫가 모래 사장 산책용 샌들 지참"],
+                essentialGear: ["식수 1.5L 이상", "슬리퍼/샌들", "우비"]
+            },
+            {
+                day: 10, date: "7/26 (일)", country: "kyrgyz", city: "songkul", title: "코치코르 거쳐 하늘 아래 거울 송쿨호수로", icon: "fa-car-side", color: "text-nomad-gold",
+                route: "이식쿨 ➔ 코치코르 ➔ 33패스 ➔ 송쿨호수", travelTime: "차량 약 4시간 30분",
+                accommodation: "Yurtcamp Rahat & Horse Trekking (송쿨 유르트)", expense: "USD 70.80 (현금)", remark: "조식 포함, 인터넷(Wi-Fi) 불가, 현금 지불만 가능",
+                schedule: [
+                    { time: "이동", activity: "이식쿨 출발 ➔ 양모 공예의 중심 코치코르(Kochkor) 마을 이동", icon: "fa-car" },
+                    { time: "코치코르", activity: "코치코르에서 점심식사 및 전통 양모 펠트 기념품 쇼핑", icon: "fa-scissors" },
+                    { time: "33패스", activity: "지그재그 험난한 고개인 33패스 전망대(Teskei Torpok Pass) 조망", icon: "fa-image" },
+                    { time: "송쿨호수", activity: "해발 3,016m의 거울 호수 송쿨(Song-Kul) 도착, 평원 산책 및 은하수 감상", icon: "fa-star", highlight: true }
+                ],
+                tasks: ["Yurtcamp Rahat & Horse Trekking 현지 지불 준비 (USD 70.80)", "송쿨은 인터넷이 차단되므로 오프라인 정보 재점검", "송쿨호수 고지대 밤의 급격한 저온 대비 보온 의류 준비", "★밤에 불빛이 완전히 차단되는 유르트 캠프에서 쏟아지는 은하수 감상", "송쿨은 데이터가 제한되므로 오프라인 상태 대비"],
+                essentialGear: ["경량 패딩/핫팩", "보조배터리", "오프라인 지도"]
+            },
+            {
+                day: 11, date: "7/27 (월)", country: "kyrgyz", city: "songkul", title: "송쿨 자유시간 후 수도 비슈케크 이동", icon: "fa-city", color: "text-cyan-600",
+                route: "송쿨호수 ➔ 비슈케크", travelTime: "차량 약 5시간",
+                accommodation: "The Bishkek Nest (비슈케크)", expense: "US$ 72.00 (2박 총액, 현금)", remark: "식사 미포함, 무료 Wi-Fi, 주차 불가, 보증금 USD 10 현금 필요",
+                schedule: [
+                    { time: "자유시간", activity: "송쿨 호숫가 평원 오전 자유 승마 및 자유 산책 시간", icon: "fa-horse" },
+                    { time: "이동", activity: "송쿨호수를 떠나 키르기스스탄 수도 비슈케크(Bishkek)로 이동 (차량 5시간)", icon: "fa-route" },
+                    { time: "힐링", activity: "비슈케크 도심 도착, 한식당에서 식사 후 마사지로 피로 해소", icon: "fa-spa", highlight: true }
+                ],
+                tasks: ["The Bishkek Nest 현금 지불 준비 (US$ 72.00) 및 보증금 (USD 10.00)", "★오전 송쿨호수의 추위와 강풍에 대비하여 패딩 및 핫팩 착용", "장거리 장시간 차량 이동 시 사용할 편안한 목베개 소지", "비슈케크 도착 후 카드 결제(트래블로그 등) 가능 여부 확인"],
+                essentialGear: ["경량 패딩/핫팩", "목베개", "보조배터리"]
+            },
+            {
+                day: 12, date: "7/28 (화)", country: "kyrgyz", city: "bishkek", title: "알라아르차 국립공원 만년설 트레킹", icon: "fa-person-hiking", color: "text-emerald-700",
+                route: "비슈케크 ➔ 알라아르차 ➔ 비슈케크", travelTime: "왕복 약 1시간 30분",
+                accommodation: "The Bishkek Nest (비슈케크)", expense: "The Bishkek Nest (2박째)", remark: "식사 미포함, 무료 Wi-Fi, 주차 불가",
+                schedule: [
+                    { time: "이동", activity: "비슈케크 시내 출발 ➔ 신성한 협곡 알라아르차(Ala-Archa) 국립공원 이동", icon: "fa-car" },
+                    { time: "선택 트레킹", activity: "빙하 폭포 코스(상 난이도, 7.4km, 왕복 6시간) 또는 텝시고원 코스(중 난이도, 3시간) 트레킹 진행", icon: "fa-person-hiking", highlight: true },
+                    { time: "복귀", activity: "비슈케크 도심 복귀 및 휴식", icon: "fa-hotel" }
+                ],
+                tasks: ["알라아르차 고산 계곡 바람 대비 든든한 방한 바람막이 재킷 지참", "트레킹 시 다리와 발목 보호를 위한 등산화 및 스틱 착용", "충분한 식수 1.5L 지참"],
+                essentialGear: ["방한 바람막이", "등산화", "트레킹 폴", "식수 1.5L"]
+            },
+            {
+                day: 13, date: "7/29 (수)", country: "kyrgyz", city: "almaty", title: "국경을 건너 다시 카자흐 알마티로", icon: "fa-passport", color: "text-blue-800",
+                route: "비슈케크 ➔ 코르다이 국경 ➔ 알마티 시내", travelTime: "국경 대기 포함 약 4~5시간",
+                accommodation: "Hostel Viator (알마티)", expense: "KZT 33,000 (2박 총액, 현금)", remark: "식사 미포함, 무료 Wi-Fi, 인근 무료 주차 가능",
+                schedule: [
+                    { time: "이동", activity: "비슈케크 출발 ➔ 코르다이(Korday) 국경 초소 이동", icon: "fa-car" },
+                    { time: "도보국경", activity: "코르다이 국경을 도보로 통과하여 카자흐스탄 입국 심사 진행", icon: "fa-passport", highlight: true },
+                    { time: "알마티", activity: "대기 차량 탑승하여 알마티 시내 호텔 체크인 및 휴식", icon: "fa-hotel" }
+                ],
+                tasks: ["Hostel Viator 현지 현금 지불 준비 (KZT 33,000)", "★코르다이 도보 국경 수속 시 수하물 및 귀중품 안전 확보에 각별히 유의", "알마티 복귀 후의 숙소 예약 상태 최종 재확인", "남은 솜(KGS)을 텐게(KZT) 또는 달러로 환전"],
+                essentialGear: ["여권 원본", "텡게(KZT) 현금"]
+            },
+            {
+                day: 14, date: "7/30 (목)", country: "kazakh", city: "almaty", title: "빅알마티 호수와 콕토베 야경", icon: "fa-image", color: "text-teal-700",
+                route: "알마티 ➔ 빅알마티 호수 ➔ 콕토베 ➔ 알마티", travelTime: "왕복 약 2시간",
+                accommodation: "Hostel Viator (알마티)", expense: "Hostel Viator (2박째)", remark: "식사 미포함, 무료 Wi-Fi, 인근 무료 주차 가능",
+                schedule: [
+                    { time: "빅알마티", activity: "천산산맥의 보석인 신비한 빅알마티 호수(Big Almaty Lake) 관람 및 산책", icon: "fa-water", highlight: true },
+                    { time: "콕토베", activity: "알마티 도심이 내려다보이는 콕토베(Kok-Tobe) 언덕 케이블카 탑승", icon: "fa-cable-car" },
+                    { time: "야경", activity: "콕토베 정상에서 눈부신 도심 야경 조망 및 맛있는 저녁 식사", icon: "fa-moon" }
+                ],
+                tasks: ["★빅알마티 호수 주변은 국경 경비 구역이므로 여권 실물 반드시 소지", "야간 콕토베 바람 대비 얇은 아웃도어 재킷 지참", "콕토베 케이블카 탑승 시간 체크"],
+                essentialGear: ["여권 원본 (국경경비구역)", "얇은 아웃도어 재킷"]
+            },
+            {
+                day: 15, date: "7/31 (금)", country: "kazakh", city: "almaty", title: "기념품 구매 및 귀국 여정", icon: "fa-plane-departure", color: "text-slate-900",
+                route: "알마티 ➔ ALA 공항 ➔ 기내", travelTime: "공항 이동 약 40분",
+                accommodation: "기내 (In-flight)", remark: "아라산 바냐",
+                schedule: [
+                    { time: "시내투어", activity: "젠코브 성당, 질료니 시장, 라하트 초콜릿, 중앙박물관, 식물원 등 알마티 문화 투어", icon: "fa-landmark" },
+                    { time: "바냐체험", activity: "역사적인 아라산 바냐(Arasan Baths) 대리석 돔 아래 터키 세라믹 스파/목욕탕 체험", icon: "fa-hot-tub-person", highlight: true },
+                    { time: "출국", activity: "알마티 국제공항(ALA)으로 이동하여 출국 수속 및 기내 숙박", icon: "fa-plane-departure" }
+                ],
+                tasks: ["위탁 수하물 허용 한도 무게(23kg 기준) 최종 점검", "초콜릿 및 액체류 기념품은 기내 반입이 불가하므로 위탁 수하물로 포장", "★아라산 바냐 이용을 위한 세면도구 및 개인 의류 지참"],
+                essentialGear: ["세면도구 (아라산 바냐용)", "여권 원본"]
+            }
+        ];
+
+        const masterChecklistData = {
+            "여권 및 중요 서류": [
+                "6개월 이상 유효기간 여권 실물 & 여권 컬러 사본 2부",
+                "QazETA 모바일 어플 설치 및 사전 ETA 발급 신청 상태 확인",
+                "여행자 보험 증서 (3,000m 이상 고산 트레킹, 긴급 이송 포함 확인)",
+                "항공권 e-ticket, 숙소/차량 예약 확인서 출력본",
+                "외교부 안내 무사증 체류 기간 규정 재확인 (카자흐 30일/키르기스 30일)",
+                "비상 연락처 목록 및 여권용 증명사진 2매, 필기용 볼펜"
+            ],
+            "방한 및 아웃도어 의류": [
+                "경량 패딩 또는 플리스 재킷 (송쿨/알틴아라산 고산 야간 대비)",
+                "방수·방풍 기능성 바람막이 재킷 (후드 타입)",
+                "얇은 내복(상·하의) 1세트 (유르트 야간 보온용)",
+                "기능성 반팔 티셔츠 4장, 얇은 긴팔 티셔츠 2장",
+                "등산바지 2벌, 반바지 1벌, 편한 잠옷/이동용 바지 1벌",
+                "수영복 1벌 (이식쿨 호수 및 알틴아라산 노천 유황 온천용)",
+                "보온 비니, 얇은 장갑, 목 차단용 버프/목토시, 챙 넓은 모자"
+            ],
+            "트레킹 & 전문 장비": [
+                "발목 보호 및 수분 방어 기능이 검증된 등산화 (새 신발 금지)",
+                "트레킹 폴 1세트 (급경사 알틴아라산 및 고산 하이킹용)",
+                "헤드랜턴 및 여비 배터리 (송쿨 유르트 밤 이동용)",
+                "식수 보관용 물통 또는 물주머니 (최소 1.5L ~ 2L)",
+                "자외선 차단 선글라스 & 선크림 (SPF 50+)",
+                "관절 보호용 무릎보호대 & 스포츠테이프",
+                "물집 방지용 밴드 (컴피드 등) 및 우비/판초"
+            ],
+            "유르트 & 고산 숙박 대비": [
+                "위생 및 보온용 침낭 라이너 (또는 경량 패딩 침낭)",
+                "20,000mAh 이하 보조배터리 1개 (기내 휴대용 규격)",
+                "귀마개 및 안대 (유르트 다인실 소음 대비 필수)",
+                "빠르게 마르는 스포츠 속건 타월 및 개인 위생용 물티슈",
+                "유르트 내부/샤워장 이동 시 신을 가벼운 슬리퍼",
+                "다용도 드라이백 또는 지퍼백 (빨랫줄 & 집게 몇 개)",
+                "개인 세면용품 (여행용 샴푸, 비누 등 소량 포장)"
+            ],
+            "의약품 & 고산병 예방": [
+                "송쿨 호수(3,016m) 대비용 고산병약 (처방 필수)",
+                "장거리 오프로드 이동용 멀미약 & 물갈이 대비 지사제",
+                "평소 복용약 및 여유분 (성분 확인용 처방전 포함)",
+                "종합 감기약, 진통 해열제, 소화제, 항히스타민제",
+                "벌레 기피제 스프레이 및 벌레 물림 연고",
+                "상처 소독약, 대역붕대, 기본 대일밴드 & 거즈"
+            ],
+            "식수, 비상식량 & 전자기기": [
+                "오프라인 얀덱스 지도(Yandex Map) & 번역 앱 사전 다운로드",
+                "탈수 방지용 이온음료 전해질 분말 5~8포",
+                "고에너지 행동식 (에너지바 6개, 견과류, 초콜릿)",
+                "즉석 누룽지, 전투식량, 즉석국 등 비상 한식 3회분",
+                "여행용 범용 멀티 어댑터 & 예비 충전 케이블",
+                "휴대용 정수 필터 또는 정수 알약 (비상용)"
+            ],
+            "현금 & 결제 수단": [
+                "미국 달러(USD) 깨끗한 신권 현물 (구권은 환전 거부 주의)",
+                "카자흐스탄 텡게(KZT) 소액 현금 (식당, 팁 대비)",
+                "키르기스스탄 솜(KGS) 소액 현금 (유르트, 승마 비용)",
+                "해외 사용 가능한 신용/체크카드 2장 (브랜드 분산)",
+                "현금 분실 대비 분할 보관용 간이 보조지갑"
+            ]
+        };
+
+        const mapSpots = [
+            { name: "Almaty (Starting Point)", lat: 43.2389, lng: 76.8897, type: "city" },
+            { name: "Medeu & Shymbulak", lat: 43.1578, lng: 77.0592, type: "scenic" },
+            { name: "Charyn Canyon", lat: 43.3533, lng: 79.0833, type: "scenic" },
+            { name: "Black Canyon", lat: 43.3601, lng: 78.9667, type: "scenic" },
+            { name: "Kolsai Lake", lat: 42.9803, lng: 78.3242, type: "lake" },
+            { name: "Kaindy Lake", lat: 42.9847, lng: 78.4632, type: "lake" },
+            { name: "Karkara Border Checkpoint", lat: 42.8447, lng: 79.2241, type: "border" },
+            { name: "Jyrgalan Valley", lat: 42.6045, lng: 78.8997, type: "scenic" },
+            { name: "Karakol City", lat: 42.4907, lng: 78.3936, type: "city" },
+            { name: "Altyn-Arashan Hot Springs", lat: 42.3667, lng: 78.6167, type: "scenic" },
+            { name: "Jeti-Oguz (Seven Bulls)", lat: 42.3333, lng: 78.2333, type: "scenic" },
+            { name: "Skazka Canyon", lat: 42.1556, lng: 77.3556, type: "scenic" },
+            { name: "Bokonbayevo (Issyk-Kul Yurt)", lat: 42.1167, lng: 76.9833, type: "city" },
+            { name: "Kochkor Village", lat: 42.2167, lng: 75.7500, type: "city" },
+            { name: "33 Pass (Teskei Torpok)", lat: 41.9167, lng: 75.4055, type: "scenic" },
+            { name: "Song-Kul Lake (Yurt Camp)", lat: 41.8333, lng: 75.1667, type: "lake" },
+            { name: "Bishkek (Capital of KG)", lat: 42.8746, lng: 74.5698, type: "city" },
+            { name: "Ala-Archa National Park", lat: 42.6416, lng: 74.4789, type: "scenic" },
+            { name: "Korday Border Checkpoint", lat: 43.0253, lng: 74.7175, type: "border" },
+            { name: "Big Almaty Lake", lat: 43.0805, lng: 76.9811, type: "scenic" },
+            { name: "Kok-Tobe Hill", lat: 43.2233, lng: 76.9764, type: "scenic" }
+        ];
+
+        
+        // 숙소 정보 동적 렌더링
+        function renderLodging() {
+            const container = document.getElementById('lodging-container');
+            if (!container) return;
+            
+            container.innerHTML = lodgingData.map(lodging => {
+                const cashBadge = lodging.cashOnly ? 
+                    `<span class="bg-red-100 text-red-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md flex items-center gap-1 border border-red-200">
+                        <i class="fa-solid fa-money-bill-wave"></i>현금결제 필수
+                     </span>` : '';
+                     
+                const wifiBadge = lodging.details.includes("접속 불가") ? 
+                    `<span class="bg-amber-100 text-amber-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md flex items-center gap-1 border border-amber-200">
+                        <i class="fa-solid fa-wifi-slash"></i>Wi-Fi 불가
+                     </span>` : 
+                    `<span class="bg-blue-50 text-blue-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md flex items-center gap-1 border border-blue-100">
+                        <i class="fa-solid fa-wifi"></i>Wi-Fi 무료
+                     </span>`;
+
+                return `
+                    <div id="lodging-card-${lodging.id}" class="bg-white rounded-[2rem] border border-slate-100 p-6 md:p-8 shadow-sm hover:shadow-md transition-all duration-300 relative flex flex-col justify-between">
+                        <div>
+                            <!-- Header Info -->
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <span class="text-[9px] font-black text-nomad-muted uppercase tracking-wider">${lodging.location}</span>
+                                    <h3 class="text-lg font-extrabold text-nomad-dark mt-0.5">${lodging.name}</h3>
+                                </div>
+                                <div class="flex flex-wrap gap-1 justify-end max-w-[150px]">
+                                    ${cashBadge}
+                                    ${wifiBadge}
+                                </div>
+                            </div>
+                            
+                            <!-- Date & Room Info -->
+                            <div class="bg-nomad-sand/40 rounded-2xl p-4 mb-5 border border-nomad-sand/50">
+                                <div class="grid grid-cols-2 gap-3 text-xs">
+                                    <div>
+                                        <span class="text-nomad-muted block text-[10px] font-semibold leading-none mb-1">숙박 기간</span>
+                                        <span class="font-bold text-nomad-dark flex items-center gap-1">
+                                            <i class="fa-solid fa-calendar text-[10px] text-nomad-teal"></i> ${lodging.period}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span class="text-nomad-muted block text-[10px] font-semibold leading-none mb-1">객실 타입</span>
+                                        <span class="font-bold text-nomad-dark flex items-center gap-1">
+                                            <i class="fa-solid fa-bed text-[10px] text-nomad-teal"></i> ${lodging.room}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Detailed Fields with Copy Feature -->
+                            <div class="space-y-3.5 mb-6 text-xs">
+                                <!-- Address -->
+                                <div class="flex items-start gap-2.5">
+                                    <div class="w-5 h-5 rounded-md bg-slate-50 flex items-center justify-center flex-shrink-0 text-slate-400 mt-0.5">
+                                        <i class="fa-solid fa-location-dot text-[10px]"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <span class="text-[10px] text-nomad-muted font-bold block leading-none mb-0.5">주소 (택시 기사 제시용 현지어 병기)</span>
+                                        
+                                        <!-- 현지어 주소 (강조 표시) -->
+                                        <span class="text-nomad-dark font-semibold leading-relaxed block bg-yellow-100/70 dark:bg-yellow-950/30 px-2 py-1 rounded border border-yellow-200/50 mb-1">
+                                            <span class="text-[9px] text-nomad-terracotta font-black block uppercase tracking-wider mb-0.5">🚕 택시용 현지어 주소</span>
+                                            ${lodging.addressLocal}
+                                        </span>
+                                        
+                                        <!-- 영문 주소 -->
+                                        <span class="text-slate-500 font-medium leading-relaxed block text-[11px] px-1">
+                                            <span class="text-[9px] text-slate-400 font-bold block uppercase tracking-wider mb-0.5">🌐 영문 주소</span>
+                                            ${lodging.addressEn}
+                                        </span>
+
+                                        <div class="flex gap-2.5 mt-2 flex-wrap">
+                                            <button onclick="copyText('${lodging.addressLocal.replace(/'/g, "\\'")}', '${lodging.name} 현지어 주소')" class="text-[10px] font-black text-nomad-teal bg-nomad-teal/10 hover:bg-nomad-teal/20 px-2.5 py-1 rounded-full flex items-center gap-1 transition-all">
+                                                <i class="fa-regular fa-copy"></i> 현지어 복사 🚕
+                                            </button>
+                                            <button onclick="copyText('${lodging.addressEn.replace(/'/g, "\\'")}', '${lodging.name} 영문 주소')" class="text-[10px] font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-full flex items-center gap-1 transition-all">
+                                                <i class="fa-regular fa-copy"></i> 영문 복사
+                                            </button>
+                                            <button onclick="focusLodgingOnMap(${lodging.lat}, ${lodging.lng}, '${lodging.name}')" class="text-[10px] font-bold text-nomad-terracotta hover:text-nomad-terracotta-dark bg-nomad-terracotta/10 hover:bg-nomad-terracotta/20 px-2.5 py-1 rounded-full flex items-center gap-1 transition-all">
+                                                <i class="fa-solid fa-map-pin"></i> 지도 위치 📍
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Phone -->
+                                <div class="flex items-start gap-2.5">
+                                    <div class="w-5 h-5 rounded-md bg-slate-50 flex items-center justify-center flex-shrink-0 text-slate-400 mt-0.5">
+                                        <i class="fa-solid fa-phone text-[10px]"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <span class="text-[10px] text-nomad-muted font-bold block leading-none mb-0.5">전화번호</span>
+                                        <span class="text-nomad-dark font-semibold block">${lodging.phone}</span>
+                                        <div class="flex gap-2 mt-1">
+                                            <button onclick="copyText('${lodging.phone.replace(/[^\d\+]/g, '')}', '${lodging.name} 전화번호')" class="text-[10px] font-bold text-nomad-teal hover:underline flex items-center gap-1">
+                                                <i class="fa-regular fa-copy"></i> 번호 복사
+                                            </button>
+                                            ${lodging.phone.includes('+') ? `
+                                            <a href="tel:${lodging.phone.replace(/\s/g, '')}" class="text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-1">
+                                                <i class="fa-solid fa-phone-volume"></i> 전화 걸기
+                                            </a>` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- GPS -->
+                                <div class="flex items-start gap-2.5">
+                                    <div class="w-5 h-5 rounded-md bg-slate-50 flex items-center justify-center flex-shrink-0 text-slate-400 mt-0.5">
+                                        <i class="fa-solid fa-compass text-[10px]"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <span class="text-[10px] text-nomad-muted font-bold block leading-none mb-0.5">GPS 좌표</span>
+                                        <span class="text-nomad-dark font-medium block">${lodging.gps}</span>
+                                        <button onclick="copyText('${lodging.gps}', '${lodging.name} GPS')" class="text-[10px] font-bold text-nomad-teal hover:underline flex items-center gap-1 mt-1">
+                                            <i class="fa-regular fa-copy"></i> GPS 복사
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Price / Booking ID -->
+                                <div class="flex items-start gap-2.5 pt-2 border-t border-slate-100">
+                                    <div class="w-5 h-5 rounded-md bg-slate-50 flex items-center justify-center flex-shrink-0 text-slate-400 mt-0.5">
+                                        <i class="fa-solid fa-receipt text-[10px]"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <span class="text-[10px] text-nomad-muted font-bold block leading-none mb-0.5">결제 금액 및 수단</span>
+                                        <span class="text-nomad-dark font-extrabold block text-sm text-nomad-terracotta">${lodging.price}</span>
+                                        <span class="text-[10px] text-slate-500 font-medium block mt-0.5">결제 방식: ${lodging.payment}</span>
+                                        ${lodging.details.includes("예약번호:") ? `
+                                            <span class="text-[10px] text-slate-400 font-medium block mt-0.5">
+                                                <i class="fa-solid fa-ticket"></i> 예약확인서: ${lodging.bookingFile}
+                                            </span>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Tips / Details -->
+                        <div class="bg-slate-50/75 border border-slate-100 rounded-2xl p-4 text-[11px] text-slate-600 leading-relaxed">
+                            <span class="font-bold text-nomad-dark block mb-1 flex items-center gap-1">
+                                <i class="fa-solid fa-circle-exclamation text-nomad-terracotta"></i> 참고 및 주의사항
+                            </span>
+                            ${lodging.details}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 숙소 카드 포커싱 및 배경색 반짝임 하이라이트 효과
+        function focusAccommodationCard(id) {
+            switchTab('accommodation');
+            setTimeout(() => {
+                const card = document.getElementById(`lodging-card-${id}`);
+                if (card) {
+                    card.classList.remove('ring-4', 'ring-nomad-teal', 'bg-amber-50');
+                    card.classList.add('ring-4', 'ring-nomad-teal', 'bg-amber-50/80', 'scale-[1.02]');
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setTimeout(() => {
+                        card.classList.remove('ring-4', 'ring-nomad-teal', 'bg-amber-50/80', 'scale-[1.02]');
+                    }, 2500);
+                }
+            }, 200);  // 탭 전환 애니메이션 대기
+        }
+
+        // 지도 줌인 및 숙소 마커 포커스
+        function focusLodgingOnMap(lat, lng, name) {
+            switchTab('map');
+            setTimeout(() => {
+                if (mapInstance) {
+                    mapInstance.invalidateSize();
+                    mapInstance.setView([lat, lng], 13);
+                    L.popup()
+                        .setLatLng([lat, lng])
+                        .setContent(`<div class="p-1 font-bold text-xs"><i class="fa-solid fa-hotel text-nomad-teal mr-1"></i>${name}</div>`)
+                        .openOn(mapInstance);
+                }
+            }, 200);
+        }
+    
+        function initMap() {
+            mapInstance = L.map('map', { scrollWheelZoom: false, zoomControl: false }).setView([42.5000, 76.9000], 8);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(mapInstance);
+
+            // Connect spots with a polyline matching the loop route exactly
+            const routeCoordinates = [
+                [43.2389, 76.8897], // Almaty
+                [43.1578, 77.0592], // Medeu & Shymbulak
+                [43.2389, 76.8897], // Almaty Return
+                [43.3533, 79.0833], // Charyn Canyon
+                [43.3601, 78.9667], // Black Canyon
+                [42.9847, 78.4632], // Kaindy Lake
+                [42.9803, 78.3242], // Kolsai Lake
+                [42.8447, 79.2241], // Karkara Border Checkpoint
+                [42.6045, 78.8997], // Jyrgalan
+                [42.4907, 78.3936], // Karakol City
+                [42.3667, 78.6167], // Altyn-Arashan Hot Springs
+                [42.4907, 78.3936], // Karakol Return
+                [42.3333, 78.2333], // Jeti-Oguz
+                [42.1556, 77.3556], // Skazka Canyon
+                [42.1167, 76.9833], // Bokonbayevo Village
+                [42.2167, 75.7500], // Kochkor Village
+                [41.9167, 75.4055], // 33 Pass
+                [41.8333, 75.1667], // Song-Kul Lake
+                [42.8746, 74.5698], // Bishkek
+                [42.6416, 74.4789], // Ala-Archa
+                [42.8746, 74.5698], // Bishkek Return
+                [43.0253, 74.7175], // Korday Border Checkpoint
+                [43.2389, 76.8897], // Almaty Return
+                [43.0805, 76.9811], // Big Almaty Lake
+                [43.2233, 76.9764], // Kok-Tobe Hill
+                [43.2389, 76.8897]  // Return to Almaty
+            ];
+
+            L.polyline(routeCoordinates, {
+                color: '#007a87',
+                weight: 4,
+                opacity: 0.8,
+                dashArray: '5, 10'
+            }).addTo(mapInstance);
+
+            mapSpots.forEach(spot => {
+                const markerClass = spot.type === "border" ? "border-label" : "map-label";
+                L.marker([spot.lat, spot.lng])
+                    .addTo(mapInstance)
+                    .bindPopup(`<b>${spot.name}</b><br>${spot.type.toUpperCase()}`)
+                    .bindTooltip(spot.name, {
+                        permanent: true,
+                        direction: 'top',
+                        offset: [0, -10],
+                        className: markerClass
+                    });
+            });
+        }
+
+        function focusHotel() {
+            switchTab('map');
+            setTimeout(() => {
+                if (mapInstance) {
+                    mapInstance.invalidateSize();
+                    mapInstance.setView([42.9833, 78.4167], 11);
+                }
+            }, 200);
+        }
+
+        async function fetchWeather() {
+            const almatyTemp = document.getElementById('almaty-temp');
+            const almatyDesc = document.getElementById('almaty-desc');
+            const karakolTemp = document.getElementById('karakol-temp');
+            const karakolDesc = document.getElementById('karakol-desc');
+            const bishkekTemp = document.getElementById('bishkek-temp');
+            const bishkekDesc = document.getElementById('bishkek-desc');
+
+            almatyTemp.classList.add('loading-pulse');
+            karakolTemp.classList.add('loading-pulse');
+            bishkekTemp.classList.add('loading-pulse');
+
+            try {
+                const almatyUrl = `https://api.openweathermap.org/data/2.5/weather?q=Almaty,kz&units=metric&appid=${weatherApiKey}&lang=kr`;
+                const almatyData = await fetchWithRetry(almatyUrl);
+                almatyTemp.innerText = `${Math.round(almatyData.main.temp)}°`;
+                almatyDesc.innerText = almatyData.weather[0].description;
+                document.getElementById('almaty-humidity').innerHTML = `<i class="fa-solid fa-droplet text-[8px]"></i> 습도 ${almatyData.main.humidity}%`;
+                document.getElementById('almaty-wind').innerHTML = `<i class="fa-solid fa-wind text-[8px]"></i> ${Math.round(almatyData.wind.speed * 3.6)}km/h`;
+
+                const karakolUrl = `https://api.openweathermap.org/data/2.5/weather?q=Karakol,kg&units=metric&appid=${weatherApiKey}&lang=kr`;
+                const karakolData = await fetchWithRetry(karakolUrl);
+                karakolTemp.innerText = `${Math.round(karakolData.main.temp)}°`;
+                karakolDesc.innerText = karakolData.weather[0].description;
+                document.getElementById('karakol-humidity').innerHTML = `<i class="fa-solid fa-droplet text-[8px]"></i> 습도 ${karakolData.main.humidity}%`;
+                document.getElementById('karakol-wind').innerHTML = `<i class="fa-solid fa-wind text-[8px]"></i> ${Math.round(karakolData.wind.speed * 3.6)}km/h`;
+
+                const bishkekUrl = `https://api.openweathermap.org/data/2.5/weather?q=Bishkek,kg&units=metric&appid=${weatherApiKey}&lang=kr`;
+                const bishkekData = await fetchWithRetry(bishkekUrl);
+                bishkekTemp.innerText = `${Math.round(bishkekData.main.temp)}°`;
+                bishkekDesc.innerText = bishkekData.weather[0].description;
+                document.getElementById('bishkek-humidity').innerHTML = `<i class="fa-solid fa-droplet text-[8px]"></i> 습도 ${bishkekData.main.humidity}%`;
+                document.getElementById('bishkek-wind').innerHTML = `<i class="fa-solid fa-wind text-[8px]"></i> ${Math.round(bishkekData.wind.speed * 3.6)}km/h`;
+
+                // Cache current weather data
+                const weatherCache = {
+                    almaty: { temp: almatyData.main.temp, desc: almatyData.weather[0].description, humidity: almatyData.main.humidity, wind: almatyData.wind.speed },
+                    karakol: { temp: karakolData.main.temp, desc: karakolData.weather[0].description, humidity: karakolData.main.humidity, wind: karakolData.wind.speed },
+                    bishkek: { temp: bishkekData.main.temp, desc: bishkekData.weather[0].description, humidity: bishkekData.main.humidity, wind: bishkekData.wind.speed }
+                };
+                localStorage.setItem('cached_weather', JSON.stringify(weatherCache));
+
+                almatyTemp.classList.remove('loading-pulse');
+                karakolTemp.classList.remove('loading-pulse');
+                bishkekTemp.classList.remove('loading-pulse');
+            } catch (err) {
+                // Try to load cached weather
+                const cached = localStorage.getItem('cached_weather');
+                if (cached) {
+                    const data = JSON.parse(cached);
+                    almatyTemp.innerText = `${Math.round(data.almaty.temp)}°`;
+                    almatyDesc.innerText = data.almaty.desc + " (로컬 캐시)";
+                    document.getElementById('almaty-humidity').innerHTML = `<i class="fa-solid fa-droplet text-[8px]"></i> 습도 ${data.almaty.humidity}%`;
+                    document.getElementById('almaty-wind').innerHTML = `<i class="fa-solid fa-wind text-[8px]"></i> ${Math.round(data.almaty.wind * 3.6)}km/h`;
+
+                    karakolTemp.innerText = `${Math.round(data.karakol.temp)}°`;
+                    karakolDesc.innerText = data.karakol.desc + " (로컬 캐시)";
+                    document.getElementById('karakol-humidity').innerHTML = `<i class="fa-solid fa-droplet text-[8px]"></i> 습도 ${data.karakol.humidity}%`;
+                    document.getElementById('karakol-wind').innerHTML = `<i class="fa-solid fa-wind text-[8px]"></i> ${Math.round(data.karakol.wind * 3.6)}km/h`;
+
+                    bishkekTemp.innerText = `${Math.round(data.bishkek.temp)}°`;
+                    bishkekDesc.innerText = data.bishkek.desc + " (로컬 캐시)";
+                    document.getElementById('bishkek-humidity').innerHTML = `<i class="fa-solid fa-droplet text-[8px]"></i> 습도 ${data.bishkek.humidity}%`;
+                    document.getElementById('bishkek-wind').innerHTML = `<i class="fa-solid fa-wind text-[8px]"></i> ${Math.round(data.bishkek.wind * 3.6)}km/h`;
+
+                    const forecastContainer = document.getElementById('forecast-container');
+                    forecastContainer.innerHTML = data.forecast.map(item => {
+                        const date = new Date(item.dt * 1000);
+                        const month = date.getMonth() + 1;
+                        const day = date.getDate();
+                        const dayName = date.toLocaleDateString('ko-KR', { weekday: 'short' });
+                        const fullLabel = `${month}/${day} (${dayName})`;
+                        const temp = Math.round(item.temp);
+                        const main = item.main.toLowerCase();
+                        let fIcon = "fa-cloud-sun";
+                        if (main.includes('rain')) fIcon = "fa-cloud-rain";
+                        else if (main.includes('clear')) fIcon = "fa-sun";
+                        else if (main.includes('cloud')) fIcon = "fa-cloud";
+                        return `
+                            <div class="forecast-card bg-slate-50 rounded-2xl p-3 flex flex-col items-center border border-slate-100 shadow-sm">
+                                <span class="text-[9px] font-bold text-slate-500 uppercase leading-tight mb-1">${fullLabel}</span>
+                                <i class="fa-solid ${fIcon} text-nomad-teal my-1.5 text-xs"></i>
+                                <span class="text-xs font-black text-slate-800">${temp}°</span>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    almatyDesc.innerText = "Offline - No Cache";
+                    karakolDesc.innerText = "Offline - No Cache";
+                    bishkekDesc.innerText = "Offline - No Cache";
+                }
+                almatyTemp.classList.remove('loading-pulse');
+                karakolTemp.classList.remove('loading-pulse');
+                bishkekTemp.classList.remove('loading-pulse');
+            }
+        }
+
+        async function updateForecast(queryCity, labelText) {
+            const labelEl = document.getElementById('forecast-city-label');
+            if (labelEl) {
+                labelEl.innerText = `(${labelText})`;
+            }
+
+            const forecastContainer = document.getElementById('forecast-container');
+            if (!forecastContainer) return;
+
+            // Show loading state
+            forecastContainer.innerHTML = `<div class="w-full text-center text-xs text-nomad-muted loading-pulse py-2">기상 예보를 불러오는 중...</div>`;
+
+            try {
+                const cacheKey = `forecast_${queryCity}`;
+                let dailyForecasts = null;
+                const cachedData = localStorage.getItem(cacheKey);
+                const cachedTime = localStorage.getItem(`${cacheKey}_time`);
+                
+                // Cache valid for 30 minutes
+                if (cachedData && cachedTime && (Date.now() - parseInt(cachedTime) < 30 * 60 * 1000)) {
+                    dailyForecasts = JSON.parse(cachedData);
+                } else {
+                    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${queryCity}&units=metric&appid=${weatherApiKey}&lang=kr`;
+                    const forecastData = await fetchWithRetry(forecastUrl);
+                    dailyForecasts = forecastData.list.filter(item => item.dt_txt.includes("12:00:00"));
+                    
+                    localStorage.setItem(cacheKey, JSON.stringify(dailyForecasts));
+                    localStorage.setItem(`${cacheKey}_time`, Date.now().toString());
+                }
+
+                forecastContainer.innerHTML = dailyForecasts.map(item => {
+                    const date = new Date(item.dt * 1000);
+                    const month = date.getMonth() + 1;
+                    const day = date.getDate();
+                    const dayName = date.toLocaleDateString('ko-KR', { weekday: 'short' });
+                    const fullLabel = `${month}/${day} (${dayName})`;
+                    const temp = Math.round(item.main.temp);
+                    const main = item.weather[0].main.toLowerCase();
+                    let fIcon = "fa-cloud-sun";
+                    if (main.includes('rain')) fIcon = "fa-cloud-rain";
+                    else if (main.includes('clear')) fIcon = "fa-sun";
+                    else if (main.includes('cloud')) fIcon = "fa-cloud";
+                    return `
+                        <div class="forecast-card bg-slate-50 rounded-2xl p-3 flex flex-col items-center border border-slate-100 shadow-sm">
+                            <span class="text-[9px] font-bold text-slate-500 uppercase leading-tight mb-1">${fullLabel}</span>
+                            <i class="fa-solid ${fIcon} text-nomad-teal my-1.5 text-xs"></i>
+                            <span class="text-xs font-black text-slate-800">${temp}°</span>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error("Forecast fetch failed:", err);
+                const cached = localStorage.getItem('cached_weather');
+                if (cached) {
+                    const data = JSON.parse(cached);
+                    if (data.forecast) {
+                        forecastContainer.innerHTML = data.forecast.map(item => {
+                            const date = new Date(item.dt * 1000);
+                            const month = date.getMonth() + 1;
+                            const day = date.getDate();
+                            const dayName = date.toLocaleDateString('ko-KR', { weekday: 'short' });
+                            const fullLabel = `${month}/${day} (${dayName})`;
+                            const temp = Math.round(item.temp);
+                            const main = item.main.toLowerCase();
+                            let fIcon = "fa-cloud-sun";
+                            if (main.includes('rain')) fIcon = "fa-cloud-rain";
+                            else if (main.includes('clear')) fIcon = "fa-sun";
+                            else if (main.includes('cloud')) fIcon = "fa-cloud";
+                            return `
+                                <div class="forecast-card bg-slate-50 rounded-2xl p-3 flex flex-col items-center border border-slate-100 shadow-sm">
+                                    <span class="text-[9px] font-bold text-slate-500 uppercase leading-tight mb-1">${fullLabel}</span>
+                                    <i class="fa-solid ${fIcon} text-nomad-teal my-1.5 text-xs"></i>
+                                    <span class="text-xs font-black text-slate-800">${temp}°</span>
+                                </div>
+                            `;
+                        }).join('');
+                        return;
+                    }
+                }
+                forecastContainer.innerHTML = `<span class="text-xs text-rose-500 py-2">예보 로드 실패</span>`;
+            }
+        }
+
+        async function fetchExchangeRates() {
+            try {
+                const response = await fetchWithRetry(`https://open.er-api.com/v6/latest/USD`);
+                const rates = response.rates;
+                currentKztRate = rates.KRW / rates.KZT;
+                currentKgsRate = rates.KRW / rates.KGS;
+                currentUsdRate = rates.KRW;
+
+                localStorage.setItem('cached_kzt_rate', currentKztRate);
+                localStorage.setItem('cached_kgs_rate', currentKgsRate);
+                localStorage.setItem('cached_usd_rate', currentUsdRate);
+
+                document.getElementById('kzt-rate-val').innerText = currentKztRate.toLocaleString(undefined, { maximumFractionDigits: 1 });
+                document.getElementById('kgs-rate-val').innerText = currentKgsRate.toLocaleString(undefined, { maximumFractionDigits: 1 });
+                document.getElementById('last-update-time').innerText = `최근 업데이트: ${new Date().toLocaleTimeString()} (KGS/KZT 실시간)`;
+                updateCalculator();
+                if (window.renderLedger) window.renderLedger();
+            } catch (err) {
+                const cachedKzt = localStorage.getItem('cached_kzt_rate');
+                const cachedKgs = localStorage.getItem('cached_kgs_rate');
+                const cachedUsd = localStorage.getItem('cached_usd_rate');
+                currentKztRate = cachedKzt ? parseFloat(cachedKzt) : 3.1;
+                currentKgsRate = cachedKgs ? parseFloat(cachedKgs) : 16.1;
+                currentUsdRate = cachedUsd ? parseFloat(cachedUsd) : 1350.0;
+
+                document.getElementById('kzt-rate-val').innerText = currentKztRate.toLocaleString(undefined, { maximumFractionDigits: 1 }) + " (캐시)";
+                document.getElementById('kgs-rate-val').innerText = currentKgsRate.toLocaleString(undefined, { maximumFractionDigits: 1 }) + " (캐시)";
+                document.getElementById('last-update-time').innerText = `오프라인 모드 (저장된 환율 적용)`;
+                updateCalculator();
+                if (window.renderLedger) window.renderLedger();
+            }
+        }
+
+        function updateCalculator() {
+            const inputVal = document.getElementById('base-calc-input').value;
+            const currency = document.getElementById('calc-currency-select').value;
+            const resEl = document.getElementById('krw-calc-result');
+
+            const selectedRate = currency === 'KZT' ? currentKztRate : currentKgsRate;
+            resEl.innerText = (inputVal * selectedRate).toLocaleString(undefined, { maximumFractionDigits: 0 });
+        }
+
+        // Itinerary state management
+        let currentCity = 'all';
+        let currentDayIdx = 0; // index within the filtered list
+
+        const cities = ['all', 'almaty', 'charyn_kolsai', 'jyrgalan', 'karakol', 'issyk_kochkor', 'songkul', 'bishkek'];
+
+        function filterItinerary(city) {
+            currentCity = city;
+            currentDayIdx = 0; // Reset to the first day of the selected city
+
+            cities.forEach(c => {
+                const btn = document.getElementById(`btn-itinerary-${c}`);
+                if (!btn) return;
+                if (c === city) {
+                    btn.className = "px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all bg-nomad-terracotta text-white shadow-sm whitespace-nowrap";
+                } else {
+                    btn.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all text-nomad-muted whitespace-nowrap";
+                }
+            });
+
+            renderDayTabs();
+            renderDayContent();
+
+            // Dynamic weather forecast updates
+            let queryCity = "Bishkek,kg";
+            let labelText = "전체 - 비슈케크 기준";
+            if (city === "almaty" || city === "charyn_kolsai") {
+                queryCity = "Almaty,kz";
+                labelText = city === "almaty" ? "알마티" : "차른/콜사이";
+            } else if (city === "jyrgalan" || city === "karakol" || city === "issyk_kochkor") {
+                queryCity = "Karakol,kg";
+                if (city === "jyrgalan") labelText = "지르갈란";
+                else if (city === "karakol") labelText = "카라콜";
+                else labelText = "이식쿨";
+            } else if (city === "songkul") {
+                queryCity = "Bishkek,kg";
+                labelText = "송쿨";
+            } else if (city === "bishkek") {
+                queryCity = "Bishkek,kg";
+                labelText = "비슈케크";
+            }
+            updateForecast(queryCity, labelText);
+        }
+
+        function renderDayTabs() {
+            const container = document.getElementById('day-tabs');
+            const filteredData = currentCity === 'all' 
+                ? itineraryData 
+                : itineraryData.filter(d => d.city === currentCity);
+            
+            container.innerHTML = filteredData.map((d, i) => `
+                <button onclick="switchDay(${i})" class="flex-shrink-0 px-5 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-sm ${i === currentDayIdx ? 'tab-active' : 'tab-inactive'}">
+                    Day ${d.day} (${d.date.split(' ')[0]})
+                </button>
+            `).join('');
+        }
+
+        function switchDay(idx) {
+            currentDayIdx = idx;
+            renderDayTabs();
+            renderDayContent();
+        }
+
+        function renderDayContent() {
+            const filteredData = currentCity === 'all' 
+                ? itineraryData 
+                : itineraryData.filter(d => d.city === currentCity);
+            const data = filteredData[currentDayIdx];
+            const container = document.getElementById('day-content');
+            
+            if (!data) {
+                container.innerHTML = `<p class="text-center text-nomad-muted text-xs">일정 데이터가 없습니다.</p>`;
+                return;
+            }
+
+
+            // Mapping html accommodation to lodgingData id if matches
+            let lodgingId = "";
+            if (data.accommodation) {
+                if (data.accommodation.includes("Kausar")) lodgingId = "kausar";
+                else if (data.accommodation.includes("Baitor")) lodgingId = "baitor";
+                else if (data.accommodation.includes("Ali guest house")) {
+                    lodgingId = (data.day === 6) ? "ali-1" : "ali-2";
+                }
+                else if (data.accommodation.includes("Ailuu")) lodgingId = "ailuu";
+                else if (data.accommodation.includes("Rahat")) lodgingId = "rahat";
+                else if (data.accommodation.includes("Bishkek Nest")) lodgingId = "bishkek-nest";
+                else if (data.accommodation.includes("Viator")) lodgingId = "viator";
+                else if (data.accommodation.includes("Abay Avenue 77")) lodgingId = "abay-77";
+            }
+
+            // Accommodation indicator
+            const accommodationHTML = data.accommodation ? `
+                <div class="flex items-center space-x-3 md:border-l md:border-slate-200 md:pl-4">
+                    <div class="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-600">
+                        <i class="fa-solid fa-hotel"></i>
+                    </div>
+                    <div>
+                        <span class="text-[9px] font-black text-nomad-muted uppercase block leading-none">오늘의 숙소 (Lodging)</span>
+                        <span class="text-xs font-bold text-nomad-dark leading-tight">${data.accommodation}</span>
+                        ${lodgingId ? `<button onclick="focusAccommodationCard('${lodgingId}')" class="text-[10px] text-nomad-teal hover:underline font-extrabold block text-left mt-0.5"><i class="fa-solid fa-circle-info mr-0.5"></i>상세 정보 🔍</button>` : ''}
+                    </div>
+                </div>
+            ` : '';
+    
+
+            // Expense indicator
+            const expenseHTML = data.expense ? `
+                <div class="flex items-center space-x-3 md:border-l md:border-slate-200 md:pl-4">
+                    <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-600">
+                        <i class="fa-solid fa-coins"></i>
+                    </div>
+                    <div>
+                        <span class="text-[9px] font-black text-nomad-muted uppercase block leading-none">주요 경비 (Budget)</span>
+                        <span class="text-xs font-bold text-nomad-dark leading-tight">${data.expense}</span>
+                    </div>
+                </div>
+            ` : '';
+
+            // Remark indicator
+            const remarkHTML = data.remark ? `
+                <div class="mt-4 p-3.5 bg-nomad-terracotta/10 border border-nomad-terracotta/20 rounded-2xl flex items-center space-x-2 text-nomad-terracotta">
+                    <i class="fa-solid fa-circle-exclamation text-xs flex-shrink-0"></i>
+                    <span class="text-[10px] font-black leading-snug">주의 / 비고: ${data.remark}</span>
+                </div>
+            ` : '';
+
+            // Essential gear indicator
+            const gearHTML = data.essentialGear && data.essentialGear.length > 0 ? `
+                <div class="mt-4 pt-3.5 border-t border-slate-200/60">
+                    <span class="text-[9px] font-black text-nomad-muted uppercase block leading-none mb-2.5">
+                        <i class="fa-solid fa-suitcase mr-1 text-nomad-teal"></i> 오늘 필수 장비 (Today's Gear)
+                    </span>
+                    <div class="flex flex-wrap gap-1.5">
+                        ${data.essentialGear.map(g => `
+                            <span class="px-2.5 py-1 rounded-xl text-[10px] font-extrabold bg-nomad-teal/10 text-nomad-teal border border-nomad-teal/10 flex items-center">
+                                <span class="w-1 h-1 rounded-full bg-nomad-teal mr-1.5"></span> ${g}
+                            </span>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : '';
+
+            // Beautiful Route & Duration Card panel inside the tab body
+            const routePanel = `
+                <div class="mb-6 bg-nomad-sand border-2 border-dashed border-nomad-teal/20 rounded-3xl p-5">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-full bg-nomad-teal/10 flex items-center justify-center text-nomad-teal">
+                                <i class="fa-solid fa-route"></i>
+                            </div>
+                            <div>
+                                <span class="text-[9px] font-black text-nomad-muted uppercase block leading-none">이동 경로 (Route)</span>
+                                <span class="text-xs font-black text-nomad-dark tracking-tight">${data.route}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3 md:border-l md:border-slate-200 md:pl-4">
+                            <div class="w-10 h-10 rounded-full bg-nomad-terracotta/10 flex items-center justify-center text-nomad-terracotta">
+                                <i class="fa-solid fa-clock"></i>
+                            </div>
+                            <div>
+                                <span class="text-[9px] font-black text-nomad-muted uppercase block leading-none">소요 시간 (Duration)</span>
+                                <span class="text-xs font-bold text-nomad-dark">${data.travelTime}</span>
+                            </div>
+                        </div>
+                        ${accommodationHTML}
+                        ${expenseHTML}
+                    </div>
+                    ${remarkHTML}
+                    ${gearHTML}
+                </div>
+            `;
+
+            container.innerHTML = `
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Schedule -->
+                    <div class="lg:col-span-2">
+                        <div class="flex items-center space-x-4 mb-6">
+                            <div class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center shadow-inner">
+                                <i class="fa-solid ${data.icon} ${data.color} text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-black text-nomad-dark">${data.title}</h3>
+                                <p class="text-[10px] text-nomad-muted">Central Asia Tour • ${data.date}</p>
+                            </div>
+                        </div>
+                        
+                        ${routePanel}
+
+                        <div class="space-y-4 border-l-2 border-slate-100 ml-6 pl-8">
+                            ${data.schedule.map(item => `
+                                <div class="relative py-2">
+                                    <div class="absolute -left-[41px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-4 border-white ${item.highlight ? 'bg-nomad-terracotta scale-110 shadow-sm' : 'bg-slate-300'}"></div>
+                                    <div class="flex flex-col bg-slate-50/50 p-4 rounded-2xl border border-transparent hover:bg-white hover:border-slate-100 transition-all">
+                                        <span class="text-nomad-teal font-black text-[10px] mb-1">${item.time}</span>
+                                        <span class="text-sm text-nomad-dark font-semibold leading-relaxed">${item.activity}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Checklist -->
+                    <div class="lg:col-span-1">
+                        <div class="bg-slate-50 rounded-[2rem] p-6 border border-slate-100 h-full shadow-inner flex flex-col justify-between">
+                            <div>
+                                <h4 class="font-extrabold text-nomad-dark text-sm mb-4 flex items-center">
+                                    <i class="fa-solid fa-clipboard-list mr-2 text-nomad-terracotta"></i> 오늘의 체크리스트
+                                </h4>
+                                <div class="space-y-3">
+                                    ${data.tasks.map((task, i) => `
+                                        <label class="check-item flex items-start cursor-pointer group">
+                                            <input type="checkbox" class="sr-only peer">
+                                            <div class="w-5 h-5 border-2 border-slate-300 rounded-lg mr-3 flex items-center justify-center transition-all peer-checked:bg-nomad-teal peer-checked:border-nomad-teal mt-0.5"><i class="fa-solid fa-check text-white text-[10px]"></i></div>
+                                            <span class="text-xs text-nomad-dark group-hover:text-black peer-checked:line-through peer-checked:text-nomad-muted leading-tight">${task}</span>
+                                        </label>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderMasterChecklist() {
+            const container = document.getElementById('master-checklist-container');
+            const savedStates = JSON.parse(localStorage.getItem('master_checklist_states') || '{}');
+            
+            container.innerHTML = Object.entries(masterChecklistData).map(([category, items]) => {
+                const categoryKey = category.replace(/[^a-zA-Z0-9가-힣]/g, '_');
+                return `
+                    <div class="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <h5 class="font-bold text-nomad-dark text-sm mb-4 flex items-center">
+                                <span class="w-1.5 h-1.5 rounded-full bg-nomad-teal mr-2"></span> ${category}
+                            </h5>
+                            <div class="space-y-3">
+                                ${items.map((item, i) => {
+                                    const itemKey = `${categoryKey}_${i}`;
+                                    const isChecked = savedStates[itemKey] ? 'checked' : '';
+                                    return `
+                                        <label class="check-item flex items-start cursor-pointer group">
+                                            <input type="checkbox" id="${itemKey}" onchange="saveChecklistState('${itemKey}')" ${isChecked} class="sr-only peer">
+                                            <div class="w-4 h-4 border-2 border-slate-200 rounded-md mr-2.5 flex items-center justify-center transition-all peer-checked:bg-nomad-teal peer-checked:border-nomad-teal mt-0.5"><i class="fa-solid fa-check text-white text-[8px]"></i></div>
+                                            <span class="text-[11px] text-nomad-muted group-hover:text-nomad-dark peer-checked:line-through peer-checked:text-slate-300 leading-tight">${item}</span>
+                                        </label>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.saveChecklistState = function(itemKey) {
+            const checkbox = document.getElementById(itemKey);
+            const savedStates = JSON.parse(localStorage.getItem('master_checklist_states') || '{}');
+            if (checkbox) {
+                savedStates[itemKey] = checkbox.checked;
+            }
+            localStorage.setItem('master_checklist_states', JSON.stringify(savedStates));
+        };
+
+        function initScenicChart() {
+            const ctx = document.getElementById('scenicChart').getContext('2d');
+            window.scenicChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['경치(Scenic)', '액티비티(Activity)', '문명격리성(Off-Grid)', '난이도(Difficulty)', '온도쾌적도(Temp)'],
+                    datasets: [
+                        { label: 'Charyn Canyon', data: [5, 4, 4, 3, 2], borderColor: '#c85a32', backgroundColor: 'rgba(200, 90, 50, 0.1)', pointRadius: 0 },
+                        { label: 'Issyk-Kul Lake', data: [5, 3, 2, 1, 5], borderColor: '#007a87', backgroundColor: 'rgba(0, 122, 135, 0.1)', hidden: true, pointRadius: 0 },
+                        { label: 'Song-Kul Lake', data: [5, 5, 5, 4, 2], borderColor: '#d4af37', backgroundColor: 'rgba(212, 175, 55, 0.1)', hidden: true, pointRadius: 0 },
+                        { label: 'Altyn-Arashan', data: [5, 5, 4, 4, 2], borderColor: '#059669', backgroundColor: 'rgba(5, 150, 105, 0.1)', hidden: true, pointRadius: 0 },
+                        { label: 'Jyrgalan Valley', data: [5, 4, 4, 3, 3], borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.1)', hidden: true, pointRadius: 0 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { r: { suggestedMin: 0, suggestedMax: 5, grid: { color: '#f0f0f0' }, pointLabels: { font: { size: 10 } } } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function updateRadarChart(idx) {
+            window.scenicChartInstance.data.datasets.forEach((d, i) => d.hidden = i !== idx);
+            window.scenicChartInstance.update();
+        }
+
+        function scrollToSection(id) {
+            // 탭 전환 매핑: section ID → tab ID
+            const sectionTabMap = {
+                'accommodation-section': 'accommodation',
+                'map-section': 'map',
+                'itinerary-section': 'itinerary',
+                'checklist-section': 'checklist'
+            };
+            const targetTab = sectionTabMap[id];
+            if (targetTab) switchTab(targetTab);
+            setTimeout(() => {
+                const el = document.getElementById(id);
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }, targetTab ? 200 : 0);
+        }
+
+        // Ledger State Management
+        let ledgerEntries = [];
+
+        function loadLedger() {
+            const cached = localStorage.getItem('silcroad_ledger');
+            if (cached) {
+                ledgerEntries = JSON.parse(cached);
+            } else {
+                ledgerEntries = [];
+            }
+            renderLedger();
+        }
+
+        function saveLedger() {
+            localStorage.setItem('silcroad_ledger', JSON.stringify(ledgerEntries));
+        }
+
+        function renderLedger() {
+            const listEl = document.getElementById('ledger-list');
+            if (!listEl) return;
+            
+            if (ledgerEntries.length === 0) {
+                listEl.innerHTML = `<p class="text-center text-nomad-muted text-[10px] py-4">지출 내역이 없습니다. 지출을 추가해 보세요!</p>`;
+                document.getElementById('ledger-total-kzt').innerText = '0 텐게';
+                document.getElementById('ledger-total-kgs').innerText = '0 솜';
+                document.getElementById('ledger-total-usd').innerText = '$0';
+                document.getElementById('ledger-total-krw').innerText = '0 원';
+                return;
+            }
+
+            listEl.innerHTML = ledgerEntries.map((entry, idx) => {
+                let symbol = '';
+                if (entry.currency === 'KZT') symbol = '₸';
+                else if (entry.currency === 'KGS') symbol = '솜';
+                else if (entry.currency === 'USD') symbol = '$';
+                else if (entry.currency === 'KRW') symbol = '₩';
+
+                return `
+                    <div class="bg-slate-50 hover:bg-slate-100/80 p-2 px-3 rounded-xl flex justify-between items-center border border-slate-100 transition-all text-xs">
+                        <div class="flex items-center space-x-2.5 min-w-0 flex-grow pr-2">
+                            <span class="text-[9px] font-black uppercase bg-nomad-teal/10 text-nomad-teal px-2 py-0.5 rounded-md flex-shrink-0">${entry.currency}</span>
+                            <span class="font-extrabold text-nomad-dark truncate">${entry.desc || '지출'}</span>
+                        </div>
+                        <div class="flex items-center space-x-3 flex-shrink-0">
+                            <span class="font-black text-nomad-dark">${entry.amount.toLocaleString()}${symbol}</span>
+                            <button onclick="deleteLedgerEntry(${idx})" class="text-rose-500 hover:text-rose-700 transition"><i class="fa-solid fa-trash-can text-[10px]"></i></button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Calculate totals
+            let totalKzt = 0;
+            let totalKgs = 0;
+            let totalUsd = 0;
+            let totalKrwDirect = 0;
+
+            ledgerEntries.forEach(entry => {
+                if (entry.currency === 'KZT') totalKzt += entry.amount;
+                else if (entry.currency === 'KGS') totalKgs += entry.amount;
+                else if (entry.currency === 'USD') totalUsd += entry.amount;
+                else if (entry.currency === 'KRW') totalKrwDirect += entry.amount;
+            });
+
+            const usdExchange = currentUsdRate || 1350.0;
+            const grandTotalKrw = (totalKzt * currentKztRate) + (totalKgs * currentKgsRate) + (totalUsd * usdExchange) + totalKrwDirect;
+
+            document.getElementById('ledger-total-kzt').innerText = `${totalKzt.toLocaleString()} 텐게`;
+            document.getElementById('ledger-total-kgs').innerText = `${totalKgs.toLocaleString()} 솜`;
+            document.getElementById('ledger-total-usd').innerText = `$${totalUsd.toLocaleString()}`;
+            document.getElementById('ledger-total-krw').innerText = `${Math.round(grandTotalKrw).toLocaleString()} 원`;
+        }
+
+        window.renderLedger = renderLedger; // expose to currency calculations
+
+        function addLedgerEntry() {
+            const amtEl = document.getElementById('ledger-amount');
+            const curEl = document.getElementById('ledger-currency');
+            const descEl = document.getElementById('ledger-desc');
+
+            const amount = parseFloat(amtEl.value);
+            const currency = curEl.value;
+            const desc = descEl.value.trim();
+
+            if (isNaN(amount) || amount <= 0) {
+                showToast("올바른 지출 금액을 입력하세요.");
+                return;
+            }
+
+            ledgerEntries.push({ amount, currency, desc });
+            saveLedger();
+            renderLedger();
+
+            // Clear input fields
+            amtEl.value = '';
+            descEl.value = '';
+        }
+
+        function deleteLedgerEntry(idx) {
+            ledgerEntries.splice(idx, 1);
+            saveLedger();
+            renderLedger();
+        }
+
+        function resetLedger() {
+            if (confirm("가계부 내역을 모두 삭제하시겠습니까?")) {
+                ledgerEntries = [];
+                saveLedger();
+                renderLedger();
+            }
+        }
+
+        function switchGuide(type) {
+            const btnEmergency = document.getElementById('btn-guide-emergency');
+            const btnOfflineMap = document.getElementById('btn-guide-offline-map');
+            const contentEmergency = document.getElementById('guide-content-emergency');
+            const contentOfflineMap = document.getElementById('guide-content-offline-map');
+
+            if (type === 'emergency') {
+                btnEmergency.className = "flex-1 py-1 rounded-lg text-[9px] font-bold transition-all bg-white text-nomad-dark shadow-sm";
+                btnOfflineMap.className = "flex-1 py-1 rounded-lg text-[9px] font-bold transition-all text-nomad-muted";
+                contentEmergency.classList.remove('hidden');
+                contentOfflineMap.classList.add('hidden');
+            } else {
+                btnEmergency.className = "flex-1 py-1 rounded-lg text-[9px] font-bold transition-all text-nomad-muted";
+                btnOfflineMap.className = "flex-1 py-1 rounded-lg text-[9px] font-bold transition-all bg-white text-nomad-dark shadow-sm";
+                contentEmergency.classList.add('hidden');
+                contentOfflineMap.classList.remove('hidden');
+            }
+        }
+
+        function renderPrintSection() {
+            const printEl = document.getElementById('print-section');
+            if (!printEl) return;
+            printEl.innerHTML = `
+                <h1 class="text-3xl font-extrabold text-center mb-8 text-slate-800">중앙아시아 대륙종단 2026 • 여행 가이드북</h1>
+                <p class="text-center text-sm text-slate-500 mb-8">알마티 & 비슈케크 & 실크로드 루프 15일 상세 일정표</p>
+                <div class="space-y-8">
+                    ${itineraryData.map(d => `
+                        <div class="border-b border-slate-200 pb-6 mb-6 avoid-break">
+                            <div class="flex justify-between items-baseline mb-3">
+                                <h2 class="text-lg font-black text-slate-800">Day ${d.day} (${d.date}) - ${d.title}</h2>
+                                <span class="text-xs font-bold text-slate-500">${d.accommodation || ''}</span>
+                            </div>
+                            <div class="bg-slate-50 rounded-2xl p-4 mb-4 text-xs grid grid-cols-2 gap-4">
+                                <div><span class="font-bold text-slate-500">이동 경로:</span> ${d.route}</div>
+                                <div><span class="font-bold text-slate-500">소요 시간:</span> ${d.travelTime}</div>
+                                ${d.expense ? `<div><span class="font-bold text-slate-500">주요 경비:</span> ${d.expense}</div>` : ''}
+                                ${d.remark ? `<div class="col-span-2 text-rose-600 font-bold"><span class="text-slate-500">비고:</span> ${d.remark}</div>` : ''}
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div class="md:col-span-2">
+                                    <h3 class="text-xs font-bold text-slate-700 mb-2">● 주요 일정</h3>
+                                    <table class="w-full text-xs border-collapse">
+                                        <tbody>
+                                            ${d.schedule.map(s => `
+                                                <tr class="border-b border-slate-100">
+                                                    <td class="py-1.5 font-bold text-teal-700 pr-3 w-16 align-top">${s.time}</td>
+                                                    <td class="py-1.5 text-slate-700 align-top">${s.activity}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="md:col-span-1">
+                                    <h3 class="text-xs font-bold text-slate-700 mb-2">● 준비 및 체크리스트</h3>
+                                    <ul class="list-disc list-inside space-y-1 text-slate-600 text-xs">
+                                        ${d.tasks.map(t => `<li>${t}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function switchTab(tabId) {
+            // Hide all tab panels
+            document.querySelectorAll('.tab-panel').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            
+            // Show selected tab panel
+            const targetPanel = document.getElementById(`${tabId}-tab`);
+            if (targetPanel) {
+                targetPanel.classList.add('active');
+            }
+
+            // Update Desktop navigation tab highlights
+            const desktopTabs = ['home', 'itinerary', 'map', 'accommodation', 'checklist'];
+            desktopTabs.forEach(t => {
+                const btn = document.getElementById(`nav-tab-${t}`);
+                if (btn) {
+                    if (t === tabId) {
+                        btn.classList.add('nav-tab-active');
+                    } else {
+                        btn.classList.remove('nav-tab-active');
+                    }
+                }
+            });
+
+            // Update Mobile navigation tab highlights
+            const mobileTabs = ['home', 'itinerary', 'map', 'accommodation', 'checklist'];
+            mobileTabs.forEach(t => {
+                const btn = document.getElementById(`nav-tab-mobile-${t}`);
+                if (btn) {
+                    if (t === tabId) {
+                        btn.classList.add('nav-tab-active-mobile');
+                    } else {
+                        btn.classList.remove('nav-tab-active-mobile');
+                    }
+                }
+            });
+
+            // Force Leaflet map redraw when map tab is activated to prevent gray box issue
+            if (tabId === 'map' && mapInstance) {
+                setTimeout(() => {
+                    mapInstance.invalidateSize();
+                }, 150);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            renderLodging();
+            fetchWeather();
+            fetchExchangeRates();
+            filterItinerary('all'); // Default to all
+            renderMasterChecklist();
+            initScenicChart();
+            renderPhrases('kazakh');
+            loadLedger();
+            renderPrintSection();
+            switchTab('home');
+
+            document.getElementById('base-calc-input').addEventListener('input', updateCalculator);
+            document.getElementById('calc-currency-select').addEventListener('change', updateCalculator);
+        });
+    </script>
+</body>
+</html>
